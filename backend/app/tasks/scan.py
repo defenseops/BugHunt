@@ -65,6 +65,16 @@ async def _run_scan_async(scan_id: str) -> dict:
                 for err in nikto_result.errors:
                     await ctx.log(err, level="error", module="nikto")
 
+            # ── Phase 2b: HTTP headers + SSL analysis ────────────────────
+            if scan.scan_type in ("web", "full"):
+                await ctx.set_phase("ssl_headers")
+                from app.scanner.ssl_headers import run_ssl_headers  # noqa: PLC0415
+                ssl_result = await run_ssl_headers(ctx, scan.target, scan.scan_type, nmap_result.findings)
+                if ssl_result.findings:
+                    await ctx.save_findings(ssl_result.findings)
+                for err in ssl_result.errors:
+                    await ctx.log(err, level="error", module="ssl_headers")
+
             # ── Phase 3: Hydra brute force ────────────────────────────────
             if scan.scan_type in ("full", "vuln"):
                 await ctx.set_phase("brute_force")
@@ -94,10 +104,9 @@ async def _run_scan_async(scan_id: str) -> dict:
             await ctx.log("Scan completed successfully", level="success")
             await ctx.commit()
 
-            total_findings = (
-                len(dns_result.findings)
-                + len(nmap_result.findings)
-            )
+            total_findings = len(dns_result.findings) + len(nmap_result.findings)
+            if scan.scan_type in ("web", "full"):
+                total_findings += len(ssl_result.findings)
             return {
                 "scan_id": scan_id,
                 "status": "completed",

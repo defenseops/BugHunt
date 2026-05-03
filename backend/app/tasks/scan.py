@@ -75,6 +75,16 @@ async def _run_scan_async(scan_id: str) -> dict:
                 for err in ssl_result.errors:
                     await ctx.log(err, level="error", module="ssl_headers")
 
+            # ── Phase 2c: Directory / endpoint enumeration ────────────────
+            if scan.scan_type in ("web", "full"):
+                await ctx.set_phase("dir_scan")
+                from app.scanner.dirscan import run_dirscan  # noqa: PLC0415
+                dir_result = await run_dirscan(ctx, scan.target, scan.scan_type, nmap_result.findings)
+                if dir_result.findings:
+                    await ctx.save_findings(dir_result.findings)
+                for err in dir_result.errors:
+                    await ctx.log(err, level="error", module="dirscan")
+
             # ── Phase 3: Hydra brute force ────────────────────────────────
             if scan.scan_type in ("full", "vuln"):
                 await ctx.set_phase("brute_force")
@@ -106,7 +116,7 @@ async def _run_scan_async(scan_id: str) -> dict:
 
             total_findings = len(dns_result.findings) + len(nmap_result.findings)
             if scan.scan_type in ("web", "full"):
-                total_findings += len(ssl_result.findings)
+                total_findings += len(ssl_result.findings) + len(dir_result.findings)
             return {
                 "scan_id": scan_id,
                 "status": "completed",

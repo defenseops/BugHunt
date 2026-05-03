@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>PentraScan — Penetration Testing Report</title>
+<style>
+/* ── Page setup ── */
+@page {
+  size: A4;
+  margin: 20mm 18mm 22mm 18mm;
+  @bottom-center {
+    content: "PentraScan Security Report  •  " string(target) "  •  page " counter(page) " of " counter(pages);
+    font-size: 8pt;
+    color: #64748b;
+    font-family: Arial, sans-serif;
+  }
+}
+@page cover { margin: 0; @bottom-center { content: none; } }
+
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: Arial, sans-serif;
+  font-size: 10pt;
+  color: #1e293b;
+  line-height: 1.5;
+}
+h1 { font-size: 22pt; }
+h2 { font-size: 14pt; margin-bottom: 8pt; color: #0f172a; border-bottom: 2px solid #22c55e; padding-bottom: 4pt; }
+h3 { font-size: 11pt; margin-bottom: 6pt; color: #0f172a; }
+p  { margin-bottom: 6pt; }
+a  { color: #2563eb; }
+
+/* ── Cover ── */
+.cover {
+  page: cover;
+  width: 210mm;
+  min-height: 297mm;
+  background: #020617;
+  display: block;
+  padding: 0;
+}
+.cover-inner {
+  padding: 40mm 18mm 20mm 18mm;
+  color: #f1f5f9;
+}
+.cover-brand {
+  font-size: 11pt;
+  letter-spacing: 6pt;
+  color: #22c55e;
+  text-transform: uppercase;
+  margin-bottom: 8mm;
+}
+.cover-title {
+  font-size: 28pt;
+  font-weight: bold;
+  color: #f1f5f9;
+  margin-bottom: 4mm;
+  line-height: 1.2;
+}
+.cover-subtitle {
+  font-size: 13pt;
+  color: #94a3b8;
+  margin-bottom: 20mm;
+}
+.cover-divider {
+  width: 80mm;
+  height: 3pt;
+  background: #22c55e;
+  margin-bottom: 14mm;
+}
+.cover-meta {
+  font-size: 10pt;
+  color: #cbd5e1;
+  line-height: 2;
+}
+.cover-meta strong { color: #f1f5f9; }
+.cover-risk {
+  display: inline-block;
+  margin-top: 10mm;
+  padding: 4pt 14pt;
+  font-size: 12pt;
+  font-weight: bold;
+  letter-spacing: 2pt;
+  border-radius: 4pt;
+}
+.risk-critical { background: #dc2626; color: #fff; }
+.risk-high     { background: #ea580c; color: #fff; }
+.risk-medium   { background: #d97706; color: #fff; }
+.risk-low      { background: #16a34a; color: #fff; }
+
+/* ── Sections ── */
+.section { page-break-before: always; padding-top: 4mm; }
+.section:first-of-type { page-break-before: auto; }
+
+/* ── Stat grid ── */
+.stat-grid { width: 100%; border-collapse: collapse; margin-bottom: 10pt; }
+.stat-grid td {
+  width: 20%;
+  text-align: center;
+  padding: 8pt 4pt;
+  border: 1pt solid #e2e8f0;
+  vertical-align: middle;
+}
+.stat-num  { font-size: 22pt; font-weight: bold; display: block; }
+.stat-label{ font-size: 7pt; color: #64748b; text-transform: uppercase; letter-spacing: 1pt; }
+.c-critical { color: #dc2626; }
+.c-high     { color: #ea580c; }
+.c-medium   { color: #d97706; }
+.c-low      { color: #2563eb; }
+.c-info     { color: #64748b; }
+
+/* ── Findings table ── */
+.findings-table { width: 100%; border-collapse: collapse; margin-top: 6pt; font-size: 9pt; }
+.findings-table th {
+  background: #0f172a;
+  color: #f1f5f9;
+  padding: 5pt 6pt;
+  text-align: left;
+  font-size: 8pt;
+  text-transform: uppercase;
+  letter-spacing: 0.5pt;
+}
+.findings-table td {
+  padding: 5pt 6pt;
+  border-bottom: 1pt solid #e2e8f0;
+  vertical-align: top;
+}
+.findings-table tr:nth-child(even) td { background: #f8fafc; }
+
+/* ── Severity badge ── */
+.badge {
+  display: inline-block;
+  padding: 1pt 6pt;
+  border-radius: 3pt;
+  font-size: 7.5pt;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+.badge-critical { background: #fee2e2; color: #dc2626; }
+.badge-high     { background: #ffedd5; color: #ea580c; }
+.badge-medium   { background: #fef3c7; color: #d97706; }
+.badge-low      { background: #dbeafe; color: #2563eb; }
+.badge-info     { background: #f1f5f9; color: #64748b; }
+
+/* ── Finding card ── */
+.finding-card {
+  border: 1pt solid #e2e8f0;
+  border-radius: 4pt;
+  margin-bottom: 10pt;
+  page-break-inside: avoid;
+}
+.finding-card-header {
+  background: #f8fafc;
+  padding: 6pt 8pt;
+  border-bottom: 1pt solid #e2e8f0;
+}
+.finding-card-body { padding: 8pt; font-size: 9pt; }
+.finding-card-body p { margin-bottom: 4pt; }
+.finding-label { font-size: 7.5pt; color: #64748b; text-transform: uppercase; font-weight: bold; margin-right: 4pt; }
+.cvss-pill {
+  display: inline-block;
+  padding: 1pt 5pt;
+  border-radius: 3pt;
+  font-size: 8pt;
+  font-weight: bold;
+}
+.cvss-critical { background: #dc2626; color: #fff; }
+.cvss-high     { background: #ea580c; color: #fff; }
+.cvss-medium   { background: #d97706; color: #fff; }
+.cvss-low      { background: #2563eb; color: #fff; }
+
+.remediation-box {
+  background: #f0fdf4;
+  border-left: 3pt solid #22c55e;
+  padding: 5pt 8pt;
+  margin-top: 6pt;
+  font-size: 9pt;
+  color: #166534;
+}
+
+/* ── Attack path card ── */
+.ap-card {
+  border: 1pt solid #fed7aa;
+  border-radius: 4pt;
+  margin-bottom: 10pt;
+  page-break-inside: avoid;
+}
+.ap-card-header {
+  background: #fff7ed;
+  padding: 6pt 8pt;
+  border-bottom: 1pt solid #fed7aa;
+}
+.ap-card-body { padding: 8pt; font-size: 9pt; }
+.ap-steps ol { padding-left: 16pt; }
+.ap-steps li { margin-bottom: 3pt; }
+
+/* ── Table: simple ── */
+.info-table { width: 100%; border-collapse: collapse; margin-bottom: 8pt; font-size: 9pt; }
+.info-table td { padding: 4pt 6pt; border: 1pt solid #e2e8f0; }
+.info-table td:first-child { color: #64748b; width: 35%; font-weight: bold; background: #f8fafc; }
+
+/* ── CVE list ── */
+.cve-list { column-count: 3; column-gap: 8pt; font-size: 8.5pt; margin-top: 6pt; }
+.cve-list span { display: block; padding: 1pt 0; color: #2563eb; }
+
+/* ── Priority table ── */
+.prio-table { width: 100%; border-collapse: collapse; margin-top: 8pt; font-size: 9pt; }
+.prio-table th { background: #0f172a; color: #f1f5f9; padding: 4pt 6pt; text-align: left; font-size: 8pt; text-transform: uppercase; }
+.prio-table td { padding: 4pt 6pt; border-bottom: 1pt solid #e2e8f0; vertical-align: top; }
+.prio-table tr:nth-child(even) td { background: #f8fafc; }
+
+/* ── Page break helpers ── */
+.pb { page-break-before: always; }
+</style>
+</head>
+<body>
+
+{# ══════════════════════════════════════════ COVER ══════════════════════════════════════════ #}
+<div class="cover">
+<div class="cover-inner">
+  <div class="cover-brand">PentraScan</div>
+  <div class="cover-title">Penetration Testing<br>Report</div>
+  <div class="cover-subtitle">Automated Security Assessment</div>
+  <div class="cover-divider"></div>
+  <div class="cover-meta">
+    <strong>Target:</strong> {{ target }}<br>
+    <strong>Scan Type:</strong> {{ scan_type }}<br>
+    <strong>Scan Date:</strong> {{ started_at }}<br>
+    <strong>Generated:</strong> {{ generated_at }}<br>
+    <strong>Requested By:</strong> {{ user_name }}
+  </div>
+  <div class="cover-risk {{ risk_class }}">{{ risk_label }} RISK</div>
+</div>
+</div>
+
+{# ══════════════════════════════════════════ EXECUTIVE SUMMARY ════════════════════════════════ #}
+<div class="section">
+<h2>1. Executive Summary</h2>
+<p>
+  An automated penetration test was conducted against target
+  <strong>{{ target }}</strong>. The scan started {{ started_at }} and completed
+  {{ finished_at }} (duration: {{ duration }}).
+  Scan type: <strong>{{ scan_type }}</strong>.
+</p>
+<p>
+  A total of <strong>{{ total_findings }}</strong> unique findings were identified.
+  The overall risk level is assessed as <strong>{{ risk_label }}</strong>.
+</p>
+
+<h3>Severity Distribution</h3>
+<table class="stat-grid">
+  <tr>
+    <td><span class="stat-num c-critical">{{ sev_counts.critical }}</span><span class="stat-label">Critical</span></td>
+    <td><span class="stat-num c-high">{{ sev_counts.high }}</span><span class="stat-label">High</span></td>
+    <td><span class="stat-num c-medium">{{ sev_counts.medium }}</span><span class="stat-label">Medium</span></td>
+    <td><span class="stat-num c-low">{{ sev_counts.low }}</span><span class="stat-label">Low</span></td>
+    <td><span class="stat-num c-info">{{ sev_counts.info }}</span><span class="stat-label">Info</span></td>
+  </tr>
+</table>
+
+{% if top_findings %}
+<h3>Top Critical / High Findings</h3>
+<table class="findings-table">
+  <tr>
+    <th style="width:12%">Severity</th>
+    <th style="width:45%">Title</th>
+    <th style="width:12%">CVSS</th>
+    <th style="width:16%">CVE</th>
+    <th style="width:15%">Type</th>
+  </tr>
+  {% for f in top_findings %}
+  <tr>
+    <td><span class="badge badge-{{ f.severity or 'info' }}">{{ (f.severity or 'info')|upper }}</span></td>
+    <td>{{ f.title[:90] }}</td>
+    <td>
+      {% set score = f.cvss_score|cvss_float %}
+      {% if score > 0 %}
+        {% if score >= 9 %}<span class="cvss-pill cvss-critical">{{ "%.1f"|format(score) }}</span>
+        {% elif score >= 7 %}<span class="cvss-pill cvss-high">{{ "%.1f"|format(score) }}</span>
+        {% elif score >= 4 %}<span class="cvss-pill cvss-medium">{{ "%.1f"|format(score) }}</span>
+        {% else %}<span class="cvss-pill cvss-low">{{ "%.1f"|format(score) }}</span>{% endif %}
+      {% else %}—{% endif %}
+    </td>
+    <td style="font-size:8pt; color:#2563eb;">{{ f.cve_id or '—' }}</td>
+    <td style="font-size:8pt; color:#64748b;">{{ f.type or '—' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% if total_cves > 0 %}
+<h3>Identified CVEs ({{ total_cves }})</h3>
+<div class="cve-list">
+  {% for cve in cves %}<span>{{ cve }}</span>{% endfor %}
+  {% if total_cves > 20 %}<span style="color:#64748b">… and {{ total_cves - 20 }} more</span>{% endif %}
+</div>
+{% endif %}
+</div>
+
+{# ══════════════════════════════════════════ METHODOLOGY ═══════════════════════════════════════ #}
+<div class="section">
+<h2>2. Methodology</h2>
+<p>
+  Testing was performed in automated mode using a suite of tools on a Kali Linux base.
+  The phases and tools used are listed below.
+</p>
+<table class="info-table">
+  <tr><td>DNS Reconnaissance</td><td>subfinder, dnsx, dnsrecon, fierce</td></tr>
+  <tr><td>OSINT</td><td>Shodan API, Censys API, theHarvester, waybackurls</td></tr>
+  <tr><td>Port Scanning</td><td>nmap (SYN scan, service versions, NSE scripts)</td></tr>
+  <tr><td>CVE Mapping</td><td>NVD API v2, searchsploit (ExploitDB)</td></tr>
+  <tr><td>Web Scanning</td><td>nikto, ffuf, feroxbuster, gobuster</td></tr>
+  <tr><td>SSL/TLS Analysis</td><td>sslyze, httpx</td></tr>
+  <tr><td>SQL Injection</td><td>sqlmap (level 1, risk 1)</td></tr>
+  <tr><td>XSS</td><td>dalfox</td></tr>
+  <tr><td>LFI / Path Traversal</td><td>ffuf + manual probes</td></tr>
+  <tr><td>SSTI / CmdI / SSRF</td><td>tplmap, commix, ssrfmap</td></tr>
+  <tr><td>XXE / CORS / Smuggling</td><td>manual probes + corsy + smuggler</td></tr>
+  <tr><td>JWT Attacks</td><td>jwt_tool</td></tr>
+  <tr><td>Open Services</td><td>direct TCP/HTTP probes</td></tr>
+  <tr><td>Brute Force</td><td>hydra</td></tr>
+  <tr><td>Metasploit</td><td>check() without exploitation (full scan)</td></tr>
+</table>
+<p style="font-size:9pt; color:#64748b; margin-top:6pt;">
+  <em>Note: SQL injection tests were run with safe parameters (level=1, risk=1).
+  No actual exploitation was performed. This report is for informational purposes only.</em>
+</p>
+</div>
+
+{# ══════════════════════════════════════════ VULNERABILITIES ══════════════════════════════════ #}
+{% if findings %}
+<div class="section">
+<h2>3. Vulnerabilities &amp; Findings</h2>
+<p>All {{ total_findings }} findings are listed below, sorted by severity.</p>
+
+{% for f in findings %}
+<div class="finding-card">
+  <div class="finding-card-header">
+    <span class="badge badge-{{ f.severity or 'info' }}">{{ (f.severity or 'INFO')|upper }}</span>
+    &nbsp;
+    <strong style="font-size:10pt;">{{ f.title[:100] }}</strong>
+    {% set score = f.cvss_score|cvss_float %}
+    {% if score > 0 %}
+      &nbsp;
+      {% if score >= 9 %}<span class="cvss-pill cvss-critical">CVSS {{ "%.1f"|format(score) }}</span>
+      {% elif score >= 7 %}<span class="cvss-pill cvss-high">CVSS {{ "%.1f"|format(score) }}</span>
+      {% elif score >= 4 %}<span class="cvss-pill cvss-medium">CVSS {{ "%.1f"|format(score) }}</span>
+      {% else %}<span class="cvss-pill cvss-low">CVSS {{ "%.1f"|format(score) }}</span>{% endif %}
+    {% endif %}
+    {% if f.cve_id %}
+      &nbsp;<span style="font-size:8pt; color:#2563eb; font-family:monospace;">{{ f.cve_id }}</span>
+    {% endif %}
+  </div>
+  <div class="finding-card-body">
+    {% if f.port %}<p><span class="finding-label">Port:</span> {{ f.port }}/{{ f.protocol or 'tcp' }}{% if f.service %} ({{ f.service }}{% if f.version %} {{ f.version }}{% endif %}){% endif %}</p>{% endif %}
+    {% if f.description %}<p><span class="finding-label">Description:</span><br>{{ f.description[:600] }}</p>{% endif %}
+    {% if f.evidence %}<p style="font-family:monospace; font-size:8pt; background:#f8fafc; padding:4pt 6pt; border:1pt solid #e2e8f0;"><span class="finding-label">Evidence:</span> {{ f.evidence[:300] }}</p>{% endif %}
+    {% if f.cvss_vector %}<p style="font-size:8pt; color:#64748b;"><span class="finding-label">CVSS Vector:</span> {{ f.cvss_vector }}</p>{% endif %}
+    {% if f.msf_module %}<p style="font-size:8.5pt; color:#7c3aed;"><span class="finding-label">MSF Module:</span> {{ f.msf_module }}</p>{% endif %}
+    {% if f.remediation %}
+    <div class="remediation-box">
+      <strong>Remediation:</strong> {{ f.remediation[:400] }}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+{# ══════════════════════════════════════════ ATTACK PATHS ══════════════════════════════════════ #}
+{% if attack_paths %}
+<div class="section">
+<h2>4. Attack Chains</h2>
+<p>The analysis engine identified the following attack chains based on discovered vulnerabilities.</p>
+{% for ap in attack_paths %}
+<div class="ap-card">
+  <div class="ap-card-header">
+    <span class="badge badge-{{ ap.severity or 'high' }}">{{ (ap.severity or 'HIGH')|upper }}</span>
+    &nbsp;<strong>{{ ap.title }}</strong>
+    {% set score = ap.cvss_score|cvss_float %}
+    {% if score > 0 %}&nbsp;<span class="cvss-pill cvss-{% if score >= 9 %}critical{% elif score >= 7 %}high{% else %}medium{% endif %}">CVSS {{ "%.1f"|format(score) }}</span>{% endif %}
+    {% if ap.msf_module %}&nbsp;<span style="font-size:8pt; color:#7c3aed; font-family:monospace;">{{ ap.msf_module }}</span>{% endif %}
+  </div>
+  <div class="ap-card-body">
+    {% if ap.description %}
+    <div class="ap-steps">
+      <ol>
+      {% for line in ap.description.split('\n') %}
+        {% if line.strip() and line.strip()[0].isdigit() and '. ' in line %}
+          <li>{{ line.split('. ', 1)[1] if '. ' in line else line }}</li>
+        {% endif %}
+      {% endfor %}
+      </ol>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+{# ══════════════════════════════════════════ RECOMMENDATIONS ══════════════════════════════════ #}
+<div class="section">
+<h2>5. Remediation Recommendations</h2>
+<p>Prioritized remediation recommendations based on risk level.</p>
+<table class="prio-table">
+  <tr>
+    <th style="width:12%">Priority</th>
+    <th style="width:12%">Deadline</th>
+    <th style="width:76%">Recommendation</th>
+  </tr>
+  {% for f in findings if f.remediation and f.severity in ['critical', 'high'] %}
+  <tr>
+    <td><span class="badge badge-{{ f.severity }}">{{ (f.severity)|upper }}</span></td>
+    <td style="color:#dc2626; font-weight:bold;">{% if f.severity == 'critical' %}Immediately{% else %}7 days{% endif %}</td>
+    <td>{{ f.remediation[:250] }}</td>
+  </tr>
+  {% endfor %}
+  {% for f in findings if f.remediation and f.severity == 'medium' %}
+  <tr>
+    <td><span class="badge badge-medium">MEDIUM</span></td>
+    <td style="color:#d97706;">30 days</td>
+    <td>{{ f.remediation[:250] }}</td>
+  </tr>
+  {% endfor %}
+  {% for f in findings if f.remediation and f.severity in ['low', 'info'] %}
+  <tr>
+    <td><span class="badge badge-{{ f.severity or 'info' }}">{{ (f.severity or 'INFO')|upper }}</span></td>
+    <td style="color:#64748b;">90 days</td>
+    <td>{{ f.remediation[:200] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+
+{# ══════════════════════════════════════════ DISCLAIMER ═══════════════════════════════════════ #}
+<div class="section" style="margin-top: 20pt;">
+<hr style="border: 0; border-top: 1pt solid #e2e8f0; margin-bottom: 10pt;"/>
+<p style="font-size:8pt; color:#94a3b8; text-align:center;">
+  This report was automatically generated by <strong>PentraScan</strong>.
+  Results are informational and should be verified by a qualified security professional.
+  Scan ID: {{ scan_id }}.
+  Generated: {{ generated_at }}.
+</p>
+</div>
+
+</body>
+</html>

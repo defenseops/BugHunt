@@ -55,7 +55,14 @@ class ScanContext:
             self.scan.finished_at = datetime.now(timezone.utc)
         await self.db.flush()
 
-    async def save_findings(self, findings: list[Finding]) -> None:
+    async def save_findings(self, findings: list[Finding], replace: bool = False) -> None:
+        if replace:
+            from sqlalchemy import delete  # noqa: PLC0415
+            await self.db.execute(
+                delete(ScanFinding).where(ScanFinding.scan_id == self.scan.id)
+            )
+            await self.db.flush()
+
         for f in findings:
             row = ScanFinding(
                 scan_id=self.scan.id,
@@ -77,7 +84,8 @@ class ScanContext:
             )
             self.db.add(row)
         await self.db.flush()
-        await self.log(f"Saved {len(findings)} findings", level="success")
+        action = "Replaced all findings with" if replace else "Saved"
+        await self.log(f"{action} {len(findings)} findings", level="success")
 
     async def commit(self) -> None:
         await self.db.commit()

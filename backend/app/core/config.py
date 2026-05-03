@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     CENSYS_API_ID: str = ""
     CENSYS_API_SECRET: str = ""
 
+    # NVD (National Vulnerability Database) API
+    NVD_API_KEY: str = ""   # optional — higher rate limit with key
+
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""

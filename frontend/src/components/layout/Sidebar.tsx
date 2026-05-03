@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   LayoutDashboard, Shield, FileText, CreditCard,
-  Settings, Users, Activity, ChevronRight,
+  Settings, Users, Activity, ChevronRight, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
@@ -12,12 +12,12 @@ const navItems = [
   { to: '/dashboard/scans',    label: 'SCANS',     icon: Shield },
   { to: '/dashboard/reports',  label: 'REPORTS',   icon: FileText },
   { to: '/dashboard/billing',  label: 'BILLING',   icon: CreditCard },
+  { to: '/dashboard/ddos',     label: 'DDOS TEST',  icon: Zap },
   { to: '/dashboard/settings', label: 'SETTINGS',  icon: Settings },
 ]
 
 const adminItems = [
-  { to: '/dashboard/admin/users', label: 'USERS',  icon: Users },
-  { to: '/dashboard/admin/stats', label: 'MONITOR', icon: Activity },
+  { to: '/dashboard/admin', label: 'ADMIN', icon: Shield },
 ]
 
 const itemVariants = {

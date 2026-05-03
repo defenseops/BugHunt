@@ -53,12 +53,16 @@ class FindingOut(BaseModel):
     severity: str | None
     title: str
     description: str | None
+    evidence: str | None
     cvss_score: Decimal | None
+    cvss_vector: str | None
     cve_id: str | None
     port: int | None
     protocol: str | None
     service: str | None
+    version: str | None
     remediation: str | None
+    msf_module: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

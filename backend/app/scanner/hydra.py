@@ -1,12 +1,13 @@
 """
-Hydra brute-force module.
-Targets auth services found by nmap (SSH, FTP, Telnet, RDP, SMB, MySQL, etc.)
-Uses built-in minimal wordlists — no external files required.
+Hydra brute-force module — Phase 7.1.
+Primary: Hydra. Fallback: Medusa (then ncrack for SSH/RDP).
+Targets auth services found by nmap.
 Only runs on scan_type in ('full', 'vuln').
 """
 from __future__ import annotations
 
 import re
+import shutil
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -217,3 +218,119 @@ async def run_hydra(
         Path(pass_file).unlink(missing_ok=True)
 
     return result
+
+
+# ── Medusa fallback ────────────────────────────────────────────────────────────
+
+_MEDUSA_SERVICES: dict[str, str] = {
+    "ssh": "ssh", "ftp": "ftp", "telnet": "telnet",
+    "smtp": "smtp", "imap": "imap", "pop3": "pop3",
+    "mysql": "mysql", "mssql": "mssql", "vnc": "vnc",
+}
+
+
+def _parse_medusa_output(output: str, port: int, service: str, target: str) -> list[Finding]:
+    """Medusa success: ACCOUNT FOUND: [ssh] Host: ... User: ... Password: ..."""
+    findings: list[Finding] = []
+    pattern = re.compile(
+        r"ACCOUNT FOUND:.*?User:\s+(\S+).*?Password:\s+(.*)", re.IGNORECASE
+    )
+    for line in output.splitlines():
+        m = pattern.search(line)
+        if not m:
+            continue
+        login = m.group(1).strip()
+        password = m.group(2).strip()
+        display_pass = "(blank)" if password == "" else password
+        findings.append(Finding(
+            type="brute",
+            title=f"Weak credential on {service}:{port} — {login}:{display_pass}",
+            severity="critical",
+            description=(
+                f"Medusa found valid credentials for {service} on port {port}.\n"
+                f"Login: {login}\nPassword: {display_pass}\nTarget: {target}"
+            ),
+            evidence=f"{login}:{display_pass} → {target}:{port}/{service}",
+            port=port,
+            protocol="tcp",
+            service=service,
+            remediation=(
+                "Change credentials immediately. Enforce strong password policy. "
+                "Disable default/shared accounts. Consider certificate-based auth."
+            ),
+        ))
+    return findings
+
+
+async def run_medusa_fallback(
+    ctx: "ScanContext",
+    target: str,
+    port: int,
+    service: str,
+    users_file: str,
+    pass_file: str,
+) -> list[Finding]:
+    medusa_svc = _MEDUSA_SERVICES.get(service)
+    if not medusa_svc or not shutil.which("medusa"):
+        return []
+
+    await ctx.log(f"Medusa fallback: {medusa_svc}:{port}", module="hydra")
+    cmd = [
+        "medusa", "-h", target, "-U", users_file, "-P", pass_file,
+        "-M", medusa_svc, "-n", str(port),
+        "-t", "4", "-f",
+    ]
+    rc, stdout, stderr = run_cmd(cmd, timeout=120)
+    if rc == -1:
+        return []
+    return _parse_medusa_output(stdout + stderr, port, service, target)
+
+
+# ── ncrack fallback for SSH/RDP ────────────────────────────────────────────────
+
+async def run_ncrack_fallback(
+    ctx: "ScanContext",
+    target: str,
+    port: int,
+    service: str,
+    users_file: str,
+    pass_file: str,
+) -> list[Finding]:
+    if service not in ("ssh", "rdp") or not shutil.which("ncrack"):
+        return []
+
+    await ctx.log(f"ncrack fallback: {service}:{port}", module="hydra")
+    cmd = [
+        "ncrack", "-U", users_file, "-P", pass_file,
+        f"{service}://{target}:{port}",
+        "--connection-limit", "4",
+    ]
+    rc, stdout, stderr = run_cmd(cmd, timeout=120)
+    if rc == -1:
+        return []
+
+    findings: list[Finding] = []
+    pattern = re.compile(r"Discovered credentials.*?(\S+)\s+(\S+)\s*$", re.IGNORECASE)
+    for line in (stdout + stderr).splitlines():
+        m = pattern.search(line)
+        if not m:
+            continue
+        login, password = m.group(1), m.group(2)
+        findings.append(Finding(
+            type="brute",
+            title=f"Weak credential on {service}:{port} — {login}:{password}",
+            severity="critical",
+            description=(
+                f"ncrack found valid credentials for {service} on port {port}.\n"
+                f"Login: {login}\nPassword: {password}\nTarget: {target}"
+            ),
+            evidence=f"{login}:{password} → {target}:{port}/{service}",
+            port=port,
+            protocol="tcp",
+            service=service,
+            remediation=(
+                "Change credentials immediately. Use key-based authentication. "
+                "Enforce account lockout and multi-factor authentication."
+            ),
+        ))
+    return findings

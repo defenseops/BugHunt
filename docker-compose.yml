@@ -13,6 +13,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - internal
+      - pentra-scan-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -29,6 +30,7 @@ services:
       - redis_data:/data
     networks:
       - internal
+      - pentra-scan-net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -81,6 +83,9 @@ services:
         condition: service_healthy
 
   # ── Scanner worker (Kali Linux, all pentest tools) ────────────────────
+  # This worker DISPATCHES scans — each individual scan runs in its own
+  # ephemeral container (pentra-scan-net) for isolation.
+  # Falls back to in-process if Docker socket is not available.
   scanner:
     platform: linux/amd64
     build:
@@ -88,14 +93,22 @@ services:
       dockerfile: ../docker/scanner/Dockerfile
     container_name: bughunt_scanner
     restart: unless-stopped
-    command: celery -A app.worker worker --loglevel=info --queues=scans --concurrency=2 --pool=prefork
+    command: celery -A app.worker worker --loglevel=info --queues=scans --concurrency=4 --pool=prefork
     env_file: .env
+    environment:
+      SCANNER_IMAGE: pentrascan-scanner:latest
+      SCAN_NETWORK: pentra-scan-net
+      MAX_PARALLEL_SCANS: "4"
+      SCAN_CPU_LIMIT: "2"
+      SCAN_MEM_LIMIT: "1g"
+      SCAN_TIMEOUT_S: "3600"
     volumes:
       - ./backend:/app
       - reports_data:/app/reports
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock  # needed to spawn scan containers
     networks:
       - internal
+      - pentra-scan-net
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -163,3 +176,14 @@ volumes:
 networks:
   internal:
     driver: bridge
+
+  # Isolated network for ephemeral scan containers.
+  # Containers on this network can reach postgres + redis but not the host.
+  pentra-scan-net:
+    driver: bridge
+    internal: false   # scans need internet access to reach targets
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"   # containers talk to each other
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

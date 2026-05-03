@@ -8,6 +8,7 @@ from typing import Literal
 class AdminUpdateUserRequest(BaseModel):
     is_active: bool | None = None
     role: Literal["user", "admin"] | None = None
+    plan: Literal["free", "pro"] | None = None   # manually set subscription plan
 
 
 class AdminUserOut(BaseModel):

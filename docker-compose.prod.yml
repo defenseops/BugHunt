@@ -1,0 +1,109 @@
+# Production overrides for docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Requirements:
+#   - .env file with all secrets
+#   - SSL certs provisioned via certbot (or mounted from host)
+
+services:
+
+  backend:
+    restart: always
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: WARNING
+    volumes:
+      - reports_data:/app/reports
+      - logs_data:/app/logs
+    # No code mount in prod — use built image
+
+  celery:
+    restart: always
+    environment:
+      APP_ENV: production
+    volumes:
+      - reports_data:/app/reports
+      - logs_data:/app/logs
+
+  scanner:
+    restart: always
+    environment:
+      APP_ENV: production
+    volumes:
+      - reports_data:/app/reports
+      - logs_data:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  frontend:
+    restart: always
+
+  nginx:
+    restart: always
+    volumes:
+      - ./docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ssl_certs:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+
+  postgres:
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+  redis:
+    restart: always
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+
+  # ── Certbot (Let's Encrypt) ───────────────────────────────────────────
+  certbot:
+    image: certbot/certbot:latest
+    container_name: pentrascan_certbot
+    volumes:
+      - ssl_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: >
+      sh -c "
+        certbot certonly --webroot
+          --webroot-path=/var/www/certbot
+          --email ${CERTBOT_EMAIL}
+          --agree-tos
+          --no-eff-email
+          -d ${DOMAIN}
+          --non-interactive
+      "
+
+  # ── PostgreSQL backup (daily) ─────────────────────────────────────────
+  pg_backup:
+    image: postgres:16-alpine
+    container_name: pentrascan_pg_backup
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - backups_data:/backups
+    networks:
+      - internal
+    entrypoint: >
+      sh -c "
+        while true; do
+          FILENAME=/backups/pentrascan_$$(date +%Y%m%d_%H%M%S).sql.gz;
+          pg_dump -h postgres -U ${POSTGRES_USER} ${POSTGRES_DB} | gzip > $$FILENAME;
+          echo \"Backup: $$FILENAME\";
+          find /backups -name '*.sql.gz' -mtime +7 -delete;
+          sleep 86400;
+        done
+      "
+    depends_on:
+      - postgres
+
+volumes:
+  logs_data:
+  certbot_www:
+  backups_data:

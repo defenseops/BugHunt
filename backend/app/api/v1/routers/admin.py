@@ -1,4 +1,7 @@
+import os
 import uuid
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -40,6 +43,7 @@ async def list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=200),
     search: str | None = Query(None),
+    plan: str | None = Query(None),
     _admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -59,6 +63,8 @@ async def list_users(
     items = []
     for u in users:
         tier = await _get_user_tier(db, u.id)
+        if plan and tier != plan:
+            continue
         items.append(AdminUserOut(
             id=u.id,
             email=u.email,
@@ -95,6 +101,25 @@ async def update_user(
         user.is_active = body.is_active
     if body.role is not None:
         user.role = body.role
+    if body.plan is not None:
+        # Deactivate existing active subscriptions
+        old = await db.execute(
+            select(Subscription).where(
+                Subscription.user_id == user.id,
+                Subscription.status == "active",
+            )
+        )
+        for sub in old.scalars().all():
+            sub.status = "cancelled"
+        if body.plan == "pro":
+            db.add(Subscription(
+                user_id=user.id,
+                plan="pro",
+                status="active",
+                expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+                payment_provider="admin",
+                payment_id=f"admin-grant-{uuid.uuid4().hex[:8]}",
+            ))
 
     await db.commit()
     await db.refresh(user)
@@ -184,3 +209,25 @@ async def get_stats(
         failed_scans=failed_scans,
         total_reports=total_reports,
     )
+
+
+# ── system logs ────────────────────────────────────────────────────────────
+
+@router.get("/logs", tags=["admin"])
+async def get_system_logs(
+    lines: int = Query(100, ge=1, le=1000),
+    level: str = Query("ERROR", description="Minimum log level to show"),
+    _admin: User = Depends(get_current_admin),
+):
+    """Return last N lines from the error log file."""
+    log_path = Path(os.getenv("LOG_DIR", "/app/logs")) / "errors.log"
+    if not log_path.exists():
+        return {"lines": [], "path": str(log_path), "total": 0}
+
+    try:
+        content = log_path.read_text(errors="replace")
+        all_lines = content.splitlines()
+        tail = all_lines[-lines:]
+        return {"lines": tail, "path": str(log_path), "total": len(all_lines)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Could not read log: {exc}")

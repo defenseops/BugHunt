@@ -45,9 +45,31 @@ export const reportsApi = {
   download: (scanId: string) => api.get(`/reports/${scanId}/download`, { responseType: 'blob' }),
 }
 
+// Admin
+export const adminApi = {
+  users:      (p?: { page?: number; limit?: number; search?: string; plan?: string }) =>
+                api.get('/admin/users', { params: p }),
+  updateUser: (id: string, data: { is_active?: boolean; role?: string; plan?: string }) =>
+                api.patch(`/admin/users/${id}`, data),
+  scans:      (p?: { page?: number; limit?: number; status?: string }) =>
+                api.get('/admin/scans', { params: p }),
+  stats:      () => api.get('/admin/stats'),
+}
+
+// DDoS
+export const ddosApi = {
+  start:  (data: {
+    target: string; attack_type: string; method?: string
+    concurrency?: number; duration?: number; intensity?: string
+  }) => api.post('/ddos/start', data),
+  stop:   (jobId: string) => api.post(`/ddos/stop/${jobId}`),
+  status: (jobId: string) => api.get(`/ddos/status/${jobId}`),
+}
+
 // Billing
 export const billingApi = {
-  status: () => api.get('/billing/status'),
+  status:       () => api.get('/billing/status'),
+  history:      () => api.get('/billing/history'),
   createKaspi:  () => api.post('/billing/kaspi/create'),
   createStripe: () => api.post('/billing/stripe/create-checkout'),
 }

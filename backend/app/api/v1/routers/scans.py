@@ -1,12 +1,13 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.deps import get_current_user
 from app.db.session import get_db
+from app.main import limiter
 from app.models.scan import Scan
 from app.models.subscription import Subscription
 from app.models.user import User
@@ -14,7 +15,9 @@ from app.schemas.scan import CreateScanRequest, ScanDetailOut, ScanListOut, Scan
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
-FREE_SCAN_LIMIT = 3
+FREE_SCAN_LIMIT    = 3
+FREE_ACTIVE_LIMIT  = 1   # max concurrent running scans on free plan
+PRO_ACTIVE_LIMIT   = 3   # max concurrent running scans on pro plan
 
 
 # ── helpers ────────────────────────────────────────────────────────────────
@@ -31,9 +34,16 @@ async def _get_active_plan(db: AsyncSession, user_id: uuid.UUID) -> str:
 
 
 async def _count_all_scans(db: AsyncSession, user_id: uuid.UUID) -> int:
-    """Total scans ever created by user (counts towards free limit)."""
+    result = await db.execute(select(func.count()).where(Scan.user_id == user_id))
+    return result.scalar_one()
+
+
+async def _count_active_scans(db: AsyncSession, user_id: uuid.UUID) -> int:
     result = await db.execute(
-        select(func.count()).where(Scan.user_id == user_id)
+        select(func.count()).where(
+            Scan.user_id == user_id,
+            Scan.status.in_(["pending", "running"]),
+        )
     )
     return result.scalar_one()
 
@@ -100,7 +110,9 @@ async def list_scans(
 # ── create ─────────────────────────────────────────────────────────────────
 
 @router.post("", response_model=ScanOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def create_scan(
+    request: Request,
     body: CreateScanRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -116,6 +128,19 @@ async def create_scan(
                     f"Free plan limit reached ({FREE_SCAN_LIMIT} scans lifetime). "
                     "Upgrade to Pro to run unlimited scans."
                 ),
+            )
+        active = await _count_active_scans(db, user.id)
+        if active >= FREE_ACTIVE_LIMIT:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Free plan allows {FREE_ACTIVE_LIMIT} active scan at a time. Wait for it to finish.",
+            )
+    else:
+        active = await _count_active_scans(db, user.id)
+        if active >= PRO_ACTIVE_LIMIT:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Pro plan allows {PRO_ACTIVE_LIMIT} concurrent scans. Wait for one to finish.",
             )
 
     scan = Scan(

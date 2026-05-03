@@ -13,6 +13,9 @@ import { Input } from '@/components/ui/input'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { PageTransition } from '@/components/common/PageTransition'
 import ScanDetail from '@/pages/ScanDetail'
+import DDoSPanel   from '@/pages/DDoSPanel'
+import BillingPage  from '@/pages/Billing'
+import AdminPanel   from '@/pages/AdminPanel'
 import { scansApi } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
@@ -287,11 +290,11 @@ export default function Dashboard() {
               <Route index                      element={<Overview />} />
               <Route path="scans"               element={<ScansPage />} />
               <Route path="scans/:scanId"        element={<ScanDetail />} />
+              <Route path="ddos"                element={<DDoSPanel />} />
               <Route path="reports"             element={<PlaceholderPage title="REPORTS" />} />
-              <Route path="billing"             element={<PlaceholderPage title="BILLING" />} />
+              <Route path="billing"             element={<BillingPage />} />
               <Route path="settings"            element={<PlaceholderPage title="SETTINGS" />} />
-              <Route path="admin/users"         element={<PlaceholderPage title="ADMIN / USERS" />} />
-              <Route path="admin/stats"         element={<PlaceholderPage title="ADMIN / MONITOR" />} />
+              <Route path="admin/*"              element={<AdminPanel />} />
             </Routes>
           </div>
         </main>

@@ -17,3 +17,18 @@ class KaspiCreateOut(BaseModel):
 class StripeCreateOut(BaseModel):
     checkout_url: str
     session_id: str
+
+
+class PaymentHistoryItem(BaseModel):
+    id: str
+    plan: str
+    status: str
+    payment_provider: str | None
+    payment_id: str | None
+    created_at: datetime
+    expires_at: datetime | None
+
+
+class PaymentHistoryOut(BaseModel):
+    items: list[PaymentHistoryItem]
+    total: int

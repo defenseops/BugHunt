@@ -13,7 +13,7 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.subscription import Subscription
 from app.models.user import User
-from app.schemas.billing import BillingStatusOut, KaspiCreateOut, StripeCreateOut
+from app.schemas.billing import BillingStatusOut, KaspiCreateOut, StripeCreateOut, PaymentHistoryOut, PaymentHistoryItem
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -225,3 +225,67 @@ async def stripe_webhook(
             await db.commit()
 
     return {"status": "ok"}
+
+
+# ── Payment history ────────────────────────────────────────────────────────
+
+@router.get("/history", response_model=PaymentHistoryOut)
+async def payment_history(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Subscription)
+        .where(Subscription.user_id == user.id)
+        .order_by(Subscription.created_at.desc())
+        .limit(20)
+    )
+    subs = result.scalars().all()
+
+    # Auto-expire overdue active subs
+    now = datetime.now(timezone.utc)
+    changed = False
+    for sub in subs:
+        if sub.status == "active" and sub.expires_at and sub.expires_at < now:
+            sub.status = "expired"
+            changed = True
+    if changed:
+        await db.commit()
+
+    items = [
+        PaymentHistoryItem(
+            id=str(sub.id),
+            plan=sub.plan,
+            status=sub.status,
+            payment_provider=sub.payment_provider,
+            payment_id=sub.payment_id,
+            created_at=sub.created_at,
+            expires_at=sub.expires_at,
+        )
+        for sub in subs
+    ]
+    return PaymentHistoryOut(items=items, total=len(items))
+
+
+# ── require_pro dependency (used by other routers) ────────────────────────
+
+async def require_pro(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    sub = await _get_active_sub(db, user.id)
+    if user.role == "admin":
+        return user
+    if not sub or sub.plan != "pro":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Pro subscription required",
+        )
+    if sub.expires_at and sub.expires_at < datetime.now(timezone.utc):
+        sub.status = "expired"
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Pro subscription expired",
+        )
+    return user

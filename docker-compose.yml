@@ -111,6 +111,7 @@ services:
 
   # ── Metasploit RPC daemon ─────────────────────────────────────────────
   msfrpcd:
+    platform: linux/amd64
     build:
       context: ./docker/msfrpcd
       dockerfile: Dockerfile

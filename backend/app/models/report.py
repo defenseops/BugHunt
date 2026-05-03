@@ -17,7 +17,10 @@ class Report(Base):
     scan_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("scans.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    lang: Mapped[str] = mapped_column(String(10), nullable=False)   # ru | en
+    lang: Mapped[str] = mapped_column(String(10), nullable=False)        # ru | en
+    status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="pending"
+    )  # pending | generating | ready | failed
     pdf_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

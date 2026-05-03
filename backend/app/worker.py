@@ -6,7 +6,7 @@ celery = Celery(
     "bughunt",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.tasks.scan"],
+    include=["app.tasks.scan", "app.tasks.report"],
 )
 
 celery.conf.update(

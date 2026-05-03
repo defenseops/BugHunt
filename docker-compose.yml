@@ -66,11 +66,12 @@ services:
       dockerfile: Dockerfile
     container_name: bughunt_celery
     restart: unless-stopped
-    command: celery -A app.worker worker --loglevel=info --concurrency=4
+    # Handles non-scan tasks (report generation, etc.)
+    command: celery -A app.worker worker --loglevel=info --queues=default,reports --concurrency=2
     env_file: .env
     volumes:
       - ./backend:/app
-      - /var/run/docker.sock:/var/run/docker.sock
+      - reports_data:/app/reports
     networks:
       - internal
     depends_on:
@@ -78,6 +79,33 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  # ── Scanner worker (Kali Linux, all pentest tools) ────────────────────
+  scanner:
+    platform: linux/amd64
+    build:
+      context: ./backend
+      dockerfile: ../docker/scanner/Dockerfile
+    container_name: bughunt_scanner
+    restart: unless-stopped
+    command: celery -A app.worker worker --loglevel=info --queues=scans --concurrency=2 --pool=prefork
+    env_file: .env
+    volumes:
+      - ./backend:/app
+      - reports_data:/app/reports
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - internal
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      msfrpcd:
+        condition: service_started
 
   # ── Frontend (React) ──────────────────────────────────────────────────
   frontend:

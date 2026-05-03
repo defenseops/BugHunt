@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     MAX_CONCURRENT_SCANS: int = 3
     SCAN_TIMEOUT_SECONDS: int = 3600
 
+    # Scanner paths (inside scanner container)
+    WORDLISTS_DIR: str = "/opt/tools/wordlists"
+    POSTEX_DIR: str = "/opt/postex"
+    REPORTS_DIR: str = "/app/reports"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",")]

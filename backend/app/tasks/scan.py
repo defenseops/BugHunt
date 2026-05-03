@@ -22,6 +22,7 @@ async def _run_scan_async(scan_id: str) -> dict:
     from app.scanner.context import ScanContext
     from app.scanner.dns import run_dns
     from app.scanner.nmap import run_nmap
+    from app.scanner.osint import run_osint
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(Scan).where(Scan.id == uuid.UUID(scan_id)))
@@ -43,6 +44,14 @@ async def _run_scan_async(scan_id: str) -> dict:
                 await ctx.save_findings(dns_result.findings)
             for err in dns_result.errors:
                 await ctx.log(err, level="error", module="dns")
+
+            # ── Phase 0b: OSINT ────────────────────────────────────────────
+            await ctx.set_phase("osint")
+            osint_result = await run_osint(ctx, scan.target, scan.scan_type)
+            if osint_result.findings:
+                await ctx.save_findings(osint_result.findings)
+            for err in osint_result.errors:
+                await ctx.log(err, level="warning", module="osint")
 
             # ── Phase 1: Nmap recon ────────────────────────────────────────
             await ctx.set_phase("recon")
@@ -114,7 +123,11 @@ async def _run_scan_async(scan_id: str) -> dict:
             await ctx.log("Scan completed successfully", level="success")
             await ctx.commit()
 
-            total_findings = len(dns_result.findings) + len(nmap_result.findings)
+            total_findings = (
+                len(dns_result.findings)
+                + len(osint_result.findings)
+                + len(nmap_result.findings)
+            )
             if scan.scan_type in ("web", "full"):
                 total_findings += len(ssl_result.findings) + len(dir_result.findings)
             return {

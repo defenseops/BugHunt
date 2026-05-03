@@ -20,6 +20,7 @@ async def _run_scan_async(scan_id: str) -> dict:
     from app.db.session import AsyncSessionLocal
     from app.models.scan import Scan
     from app.scanner.context import ScanContext
+    from app.scanner.dns import run_dns
     from app.scanner.nmap import run_nmap
 
     async with AsyncSessionLocal() as db:
@@ -34,6 +35,14 @@ async def _run_scan_async(scan_id: str) -> dict:
         try:
             await ctx.set_status("running")
             await ctx.commit()
+
+            # ── Phase 0: DNS recon ─────────────────────────────────────────
+            await ctx.set_phase("dns_recon")
+            dns_result = await run_dns(ctx, scan.target, scan.scan_type)
+            if dns_result.findings:
+                await ctx.save_findings(dns_result.findings)
+            for err in dns_result.errors:
+                await ctx.log(err, level="error", module="dns")
 
             # ── Phase 1: Nmap recon ────────────────────────────────────────
             await ctx.set_phase("recon")
@@ -85,10 +94,14 @@ async def _run_scan_async(scan_id: str) -> dict:
             await ctx.log("Scan completed successfully", level="success")
             await ctx.commit()
 
+            total_findings = (
+                len(dns_result.findings)
+                + len(nmap_result.findings)
+            )
             return {
                 "scan_id": scan_id,
                 "status": "completed",
-                "findings": len(nmap_result.findings),
+                "findings": total_findings,
             }
 
         except Exception as exc:

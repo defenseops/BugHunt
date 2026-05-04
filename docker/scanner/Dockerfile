@@ -12,7 +12,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH="/root/go/bin:/usr/local/go/bin:/opt/tools/bin:$PATH"
 
 # ── Layer 1: System packages ───────────────────────────────────────────────
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends --fix-missing \
     # Core utilities
     curl wget git vim nano unzip p7zip-full tar gzip \
     ca-certificates gnupg lsb-release apt-transport-https \

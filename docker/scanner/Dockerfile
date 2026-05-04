@@ -15,7 +15,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Replace sources.list to avoid unreachable mirrors (neusoft, etc.)
 RUN echo 'deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware' \
     > /etc/apt/sources.list && \
-    apt-get update && apt-get install -y --no-install-recommends \
+    rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources && \
+    apt-get update && apt-get install -y --no-install-recommends --fix-missing \
     # Core utilities
     curl wget git vim nano unzip p7zip-full tar gzip \
     ca-certificates gnupg lsb-release apt-transport-https \

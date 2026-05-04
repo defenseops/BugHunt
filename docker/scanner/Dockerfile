@@ -57,8 +57,7 @@ RUN curl -fsSL https://bootstrap.pypa.io/get-pip.py | python3 - --break-system-p
     rich \
     dirsearch \
     sslyze \
-    smbmap \
-    enum4linux
+    smbmap
 
 # ── Layer 3: Go installation ───────────────────────────────────────────────
 RUN arch=$(uname -m) && \
@@ -106,6 +105,9 @@ RUN arch=$(uname -m) && \
     case "$arch" in aarch64|arm64) DEB=arm64 ;; *) DEB=amd64 ;; esac && \
     curl -fsSL "https://github.com/epi052/feroxbuster/releases/download/v2.10.4/feroxbuster_${DEB}.deb" \
     -o /tmp/ferox.deb && dpkg -i /tmp/ferox.deb || true && rm -f /tmp/ferox.deb
+
+# enum4linux-ng (Python rewrite, replaces perl enum4linux)
+RUN pip3 install --no-cache-dir --break-system-packages enum4linux-ng || true
 
 # pspy64 (process spy, no-root) — binary from GitHub, not in apt
 RUN curl -fsSL "https://github.com/DominicBreuker/pspy/releases/latest/download/pspy64" \

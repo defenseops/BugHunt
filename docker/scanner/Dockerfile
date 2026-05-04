@@ -40,7 +40,7 @@ RUN printf '%s\n%s\n' \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Layer 2: Python tools ──────────────────────────────────────────────────
-RUN curl -fsSL https://bootstrap.pypa.io/get-pip.py | python3 - && \
+RUN curl -fsSL https://bootstrap.pypa.io/get-pip.py | python3 - --break-system-packages && \
     pip3 install --no-cache-dir --break-system-packages \
     python-whois \
     shodan \

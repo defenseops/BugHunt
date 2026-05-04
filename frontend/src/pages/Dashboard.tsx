@@ -45,6 +45,7 @@ function StatCard({ label, value, icon: Icon, color, sub }: {
 
 // ── Overview ───────────────────────────────────────────────────────────────
 function Overview() {
+  const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['scans'],

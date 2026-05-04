@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.deps import get_current_user
 from app.db.session import get_db
-from app.main import limiter
+from app.limiter import limiter
 from app.models.scan import Scan
 from app.models.subscription import Subscription
 from app.models.user import User

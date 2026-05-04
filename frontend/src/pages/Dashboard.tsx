@@ -72,11 +72,9 @@ function Overview() {
             Tier: <span className="text-cyber-green uppercase">{user?.subscription_tier}</span>
           </p>
         </div>
-        <Button size="sm" asChild>
-          <Link to="/dashboard/scans" className="flex items-center gap-2">
-            <Plus className="w-3.5 h-3.5" />
-            NEW SCAN
-          </Link>
+        <Button size="sm" onClick={() => navigate('/dashboard/scans')} className="flex items-center gap-2">
+          <Plus className="w-3.5 h-3.5" />
+          NEW SCAN
         </Button>
       </div>
 
@@ -125,8 +123,8 @@ function Overview() {
             <Target className="w-8 h-8 text-cyber-muted/30 mx-auto mb-3" />
             <p className="text-sm font-mono text-cyber-muted">No scans yet</p>
             <p className="text-xs font-mono text-cyber-muted/50 mt-1">Start your first scan to see results here</p>
-            <Button size="sm" className="mt-4" asChild>
-              <Link to="/dashboard/scans">START SCAN</Link>
+            <Button size="sm" className="mt-4" onClick={() => navigate('/dashboard/scans')}>
+              START SCAN
             </Button>
           </div>
         ) : (

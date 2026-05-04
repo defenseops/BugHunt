@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Shield, Zap, FileText, Eye, Lock, Globe,
@@ -34,6 +34,7 @@ const fadeUp = {
 }
 
 export default function Landing() {
+  const navigate = useNavigate()
   return (
     <PageTransition>
       <div className="min-h-screen bg-cyber-bg scanline-overlay">
@@ -74,17 +75,13 @@ export default function Landing() {
             </motion.p>
 
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <Button size="lg" asChild>
-                <Link to="/register" className="flex items-center gap-2">
-                  START FREE SCAN
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
+              <Button size="lg" onClick={() => navigate('/register')} className="flex items-center gap-2">
+                START FREE SCAN
+                <ArrowRight className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="lg" asChild>
-                <Link to="#features" className="flex items-center gap-2">
-                  <Terminal className="w-4 h-4" />
-                  SEE HOW IT WORKS
-                </Link>
+              <Button variant="outline" size="lg" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="flex items-center gap-2">
+                <Terminal className="w-4 h-4" />
+                SEE HOW IT WORKS
               </Button>
             </motion.div>
 
@@ -231,11 +228,9 @@ export default function Landing() {
               Ready to find your <span className="text-cyber-green neon-text">vulnerabilities?</span>
             </h2>
             <p className="text-cyber-muted font-sans">Start with 3 free scans. No credit card required.</p>
-            <Button size="lg" asChild>
-              <Link to="/register" className="flex items-center gap-2 mx-auto w-fit">
-                CREATE FREE ACCOUNT
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+            <Button size="lg" onClick={() => navigate('/register')} className="flex items-center gap-2 mx-auto w-fit">
+              CREATE FREE ACCOUNT
+              <ArrowRight className="w-4 h-4" />
             </Button>
           </motion.div>
         </section>

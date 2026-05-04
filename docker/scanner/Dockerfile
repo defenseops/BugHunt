@@ -16,8 +16,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN echo 'deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware' \
     > /etc/apt/sources.list && \
     rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources && \
+    echo '127.0.0.1 mirrors.neusoft.edu.cn' >> /etc/hosts && \
+    echo '127.0.0.1 mirror.neusoft.edu.cn' >> /etc/hosts && \
     rm -rf /var/lib/apt/lists/* && \
-    apt-get update && apt-get install -y --no-install-recommends \
+    apt-get update -o Acquire::Retries=3 && \
+    apt-get install -y --no-install-recommends --fix-missing \
     curl wget git vim nano unzip p7zip-full tar gzip \
     ca-certificates gnupg lsb-release apt-transport-https \
     python3 python3-venv python3-dev \

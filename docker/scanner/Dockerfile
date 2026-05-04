@@ -16,38 +16,29 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN echo 'deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware' \
     > /etc/apt/sources.list && \
     rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources && \
-    apt-get update && apt-get install -y --no-install-recommends --fix-missing \
-    # Core utilities
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get update && apt-get install -y --no-install-recommends \
     curl wget git vim nano unzip p7zip-full tar gzip \
     ca-certificates gnupg lsb-release apt-transport-https \
-    python3 python3-pip python3-venv python3-dev \
+    python3 python3-venv python3-dev \
     build-essential libssl-dev libffi-dev libxml2-dev libxslt1-dev \
-    # Network tools
     nmap masscan hping3 netdiscover arp-scan \
     tcpdump tshark net-tools iputils-ping \
     traceroute whois dnsutils \
-    # Web scanners
     nikto sqlmap gobuster \
     wafw00f whatweb \
-    # SSL/TLS
     sslyze sslscan \
-    # Directory brute force
-    dirsearch \
-    # Auth brute force
     hydra medusa ncrack \
-    # Hash cracking
     john hashcat \
-    # SMB / AD
     enum4linux smbmap \
     nbtscan \
-    # OSINT / recon
     theharvester recon-ng dnsrecon fierce \
-    # Misc
     jq bc expect \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Layer 2: Python tools ──────────────────────────────────────────────────
-RUN pip3 install --no-cache-dir --break-system-packages \
+RUN curl -fsSL https://bootstrap.pypa.io/get-pip.py | python3 - && \
+    pip3 install --no-cache-dir --break-system-packages \
     python-whois \
     shodan \
     censys \
@@ -60,7 +51,8 @@ RUN pip3 install --no-cache-dir --break-system-packages \
     netaddr \
     tqdm \
     colorama \
-    rich
+    rich \
+    dirsearch
 
 # ── Layer 3: Go installation ───────────────────────────────────────────────
 RUN arch=$(uname -m) && \

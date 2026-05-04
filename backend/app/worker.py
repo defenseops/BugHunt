@@ -17,5 +17,6 @@ celery.conf.update(
     enable_utc=True,
     task_routes={
         "app.tasks.scan.*": {"queue": "scans"},
+        "app.tasks.report.*": {"queue": "reports"},
     },
 )

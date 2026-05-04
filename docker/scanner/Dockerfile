@@ -153,7 +153,7 @@ RUN \
 # ── Layer 8: App code ──────────────────────────────────────────────────────
 WORKDIR /app
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages --ignore-installed -r requirements.txt
 
 COPY . .
 

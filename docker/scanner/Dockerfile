@@ -27,10 +27,9 @@ RUN echo 'deb http://http.kali.org/kali kali-rolling main contrib non-free non-f
     traceroute whois dnsutils \
     nikto sqlmap gobuster \
     wafw00f whatweb \
-    sslyze sslscan \
+    sslscan \
     hydra medusa ncrack \
     john hashcat \
-    enum4linux smbmap \
     nbtscan \
     theharvester recon-ng dnsrecon fierce \
     jq bc expect \
@@ -52,7 +51,10 @@ RUN curl -fsSL https://bootstrap.pypa.io/get-pip.py | python3 - && \
     tqdm \
     colorama \
     rich \
-    dirsearch
+    dirsearch \
+    sslyze \
+    smbmap \
+    enum4linux
 
 # ── Layer 3: Go installation ───────────────────────────────────────────────
 RUN arch=$(uname -m) && \

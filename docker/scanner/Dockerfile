@@ -13,14 +13,15 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # ── Layer 1: System packages ───────────────────────────────────────────────
 # Replace sources.list to avoid unreachable mirrors (neusoft, etc.)
-RUN echo 'deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware' \
+RUN printf '%s\n%s\n' \
+    'deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware' \
+    'deb http://kali.download/kali kali-rolling main contrib non-free non-free-firmware' \
     > /etc/apt/sources.list && \
     rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources && \
-    printf 'Acquire::BlockedURIs { "http://mirrors.neusoft.edu.cn/"; "https://mirrors.neusoft.edu.cn/"; };\nAcquire::Retries "3";\n' \
-    > /etc/apt/apt.conf.d/99block-neusoft && \
+    rm -f /etc/apt/apt.conf.d/99block-neusoft && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get update && \
-    apt-get install -y --no-install-recommends --fix-missing \
+    apt-get install -y --no-install-recommends \
     curl wget git vim nano unzip p7zip-full tar gzip \
     ca-certificates gnupg lsb-release apt-transport-https \
     python3 python3-venv python3-dev \

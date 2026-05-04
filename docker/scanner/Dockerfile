@@ -41,7 +41,7 @@ RUN printf '%s\n%s\n' \
 
 # ── Layer 2: Python tools ──────────────────────────────────────────────────
 RUN curl -fsSL https://bootstrap.pypa.io/get-pip.py | python3 - --break-system-packages && \
-    pip3 install --no-cache-dir --break-system-packages \
+    pip3 install --no-cache-dir --break-system-packages --ignore-installed \
     python-whois \
     shodan \
     censys \

@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
 import { useLocation } from 'react-router-dom'
 import Landing from '@/pages/Landing'
 import Login from '@/pages/Login'

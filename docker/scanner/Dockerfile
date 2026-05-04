@@ -38,8 +38,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nbtscan \
     # OSINT / recon
     theharvester recon-ng dnsrecon fierce \
-    # Post-exploitation
-    pspy64 \
     # Misc
     jq bc expect \
     && rm -rf /var/lib/apt/lists/*
@@ -106,6 +104,10 @@ RUN arch=$(uname -m) && \
     case "$arch" in aarch64|arm64) DEB=arm64 ;; *) DEB=amd64 ;; esac && \
     curl -fsSL "https://github.com/epi052/feroxbuster/releases/download/v2.10.4/feroxbuster_${DEB}.deb" \
     -o /tmp/ferox.deb && dpkg -i /tmp/ferox.deb || true && rm -f /tmp/ferox.deb
+
+# pspy64 (process spy, no-root) — binary from GitHub, not in apt
+RUN curl -fsSL "https://github.com/DominicBreuker/pspy/releases/latest/download/pspy64" \
+    -o /opt/tools/bin/pspy64 && chmod +x /opt/tools/bin/pspy64 || true
 
 # nuclei templates
 RUN nuclei -update-templates -silent 2>/dev/null || true

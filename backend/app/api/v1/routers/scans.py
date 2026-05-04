@@ -95,7 +95,7 @@ async def list_scans(
     total = total_result.scalar_one()
 
     scans_result = await db.execute(
-        q.order_by(Scan.created_at.desc()).offset(offset).limit(limit)
+        q.options(selectinload(Scan.findings)).order_by(Scan.created_at.desc()).offset(offset).limit(limit)
     )
     scans = scans_result.scalars().all()
 

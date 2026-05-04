@@ -61,8 +61,14 @@ RUN pip3 install --no-cache-dir --break-system-packages \
     rich
 
 # ── Layer 3: Go installation ───────────────────────────────────────────────
-RUN curl -fsSL https://go.dev/dl/go1.22.3.linux-amd64.tar.gz \
-    | tar -C /usr/local -xzf -
+RUN arch=$(uname -m) && \
+    case "$arch" in \
+      aarch64|arm64) GOARCH=arm64 ;; \
+      *) GOARCH=amd64 ;; \
+    esac && \
+    curl -fsSL "https://go.dev/dl/go1.22.3.linux-${GOARCH}.tar.gz" \
+    | tar -C /usr/local -xzf - \
+    && ln -sf /usr/local/go/bin/go /usr/local/bin/go
 
 # ── Layer 4: Go-based tools ────────────────────────────────────────────────
 RUN go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest 2>/dev/null || true && \
@@ -90,11 +96,15 @@ RUN go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest 
 RUN mkdir -p /opt/tools/bin /opt/tools/wordlists /opt/postex
 
 # rustscan (fast port scanner)
-RUN curl -fsSL https://github.com/RustScan/RustScan/releases/download/2.3.0/rustscan_2.3.0_amd64.deb \
+RUN arch=$(uname -m) && \
+    case "$arch" in aarch64|arm64) DEB=arm64 ;; *) DEB=amd64 ;; esac && \
+    curl -fsSL "https://github.com/RustScan/RustScan/releases/download/2.3.0/rustscan_2.3.0_${DEB}.deb" \
     -o /tmp/rustscan.deb && dpkg -i /tmp/rustscan.deb || true && rm -f /tmp/rustscan.deb
 
 # feroxbuster (recursive dir brute)
-RUN curl -fsSL https://github.com/epi052/feroxbuster/releases/download/v2.10.4/feroxbuster_amd64.deb \
+RUN arch=$(uname -m) && \
+    case "$arch" in aarch64|arm64) DEB=arm64 ;; *) DEB=amd64 ;; esac && \
+    curl -fsSL "https://github.com/epi052/feroxbuster/releases/download/v2.10.4/feroxbuster_${DEB}.deb" \
     -o /tmp/ferox.deb && dpkg -i /tmp/ferox.deb || true && rm -f /tmp/ferox.deb
 
 # nuclei templates

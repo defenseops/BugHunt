@@ -93,7 +93,7 @@ function UsersTab() {
   const [page, setPage]     = useState(1)
   const [search, setSearch] = useState('')
   const [plan, setPlan]     = useState('')
-  const [editId, setEditId] = useState<string | null>(null)
+  const [_editId, setEditId] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users', page, search, plan],

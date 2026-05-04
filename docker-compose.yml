@@ -87,7 +87,6 @@ services:
   # ephemeral container (pentra-scan-net) for isolation.
   # Falls back to in-process if Docker socket is not available.
   scanner:
-    platform: linux/amd64
     build:
       context: ./backend
       dockerfile: ../docker/scanner/Dockerfile
@@ -152,7 +151,6 @@ services:
 
   # ── Metasploit RPC daemon ─────────────────────────────────────────────
   msfrpcd:
-    platform: linux/amd64
     build:
       context: ./docker/msfrpcd
       dockerfile: Dockerfile

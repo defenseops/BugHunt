@@ -362,7 +362,7 @@ export default function ScanDetail() {
     ? vulnFindings
     : vulnFindings.filter((f) => (f.severity ?? 'info') === severityFilter)
 
-  async function handleGenerateReport(lang: 'ru' | 'en' = 'ru') {
+  async function handleGenerateReport(_lang: 'ru' | 'en' = 'ru') {
     if (!scanId) return
     setGeneratingReport(true)
     try { await reportsApi.generate(scanId) }

@@ -362,12 +362,39 @@ export default function ScanDetail() {
     ? vulnFindings
     : vulnFindings.filter((f) => (f.severity ?? 'info') === severityFilter)
 
-  async function handleGenerateReport(_lang: 'ru' | 'en' = 'ru') {
+  async function handleGenerateReport(lang: 'ru' | 'en' = 'ru') {
     if (!scanId) return
     setGeneratingReport(true)
-    try { await reportsApi.generate(scanId) }
-    catch { /* handled by toast later */ }
-    finally { setGeneratingReport(false) }
+    try {
+      await reportsApi.generate(scanId, lang)
+
+      // Poll until ready (max 60s)
+      let ready = false
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => setTimeout(r, 2000))
+        const { data: reports } = await reportsApi.list(scanId)
+        const report = reports.find((r: { lang: string; status: string }) => r.lang === lang && r.status !== 'failed')
+        if (report?.status === 'ready') { ready = true; break }
+        if (report?.status === 'failed') throw new Error('Report generation failed')
+      }
+
+      if (!ready) throw new Error('Report generation timed out')
+
+      // Download
+      const { data } = await reportsApi.download(scanId, lang)
+      const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `pentrascan_${scanId}_${lang}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Report error:', err)
+    } finally {
+      setGeneratingReport(false)
+    }
   }
 
   async function handleDelete() {

@@ -44,7 +44,7 @@ async def generate_report(
 ):
     await _get_completed_scan(db, scan_id, user.id)
 
-    # Re-use existing report for same scan+lang if not failed
+    # Re-use existing ready report; re-dispatch if stuck in pending/generating
     existing = await db.execute(
         select(Report).where(
             Report.scan_id == scan_id,
@@ -54,7 +54,17 @@ async def generate_report(
     )
     report = existing.scalar_one_or_none()
 
-    if report and report.status in ("pending", "generating", "ready"):
+    if report and report.status == "ready":
+        return report
+
+    from app.tasks.report import generate_pdf  # noqa: PLC0415
+
+    if report and report.status in ("pending", "generating"):
+        # Task may have been lost (e.g. Redis restart) — re-dispatch
+        report.status = "pending"
+        await db.commit()
+        await db.refresh(report)
+        generate_pdf.delay(str(report.id), str(scan_id), body.lang)
         return report
 
     # Create new report record
@@ -67,8 +77,6 @@ async def generate_report(
     await db.commit()
     await db.refresh(report)
 
-    # Dispatch Celery task
-    from app.tasks.report import generate_pdf  # noqa: PLC0415
     generate_pdf.delay(str(report.id), str(scan_id), body.lang)
 
     return report

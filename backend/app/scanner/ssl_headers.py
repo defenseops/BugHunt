@@ -226,9 +226,9 @@ def _run_sslyze(target: str, ports: list[int], timeout: int = 120) -> tuple[dict
 def _parse_sslyze_findings(sslyze_data: dict) -> list[Finding]:
     findings: list[Finding] = []
 
-    server_results = sslyze_data.get("server_scan_results", [])
+    server_results = sslyze_data.get("server_scan_results") or []
     for server in server_results:
-        server_info = server.get("server_location", {})
+        server_info = server.get("server_location") or {}
         host = server_info.get("hostname", server_info.get("ip_address", "?"))
         port = server_info.get("port", 443)
         label = f"{host}:{port}"
@@ -238,12 +238,12 @@ def _parse_sslyze_findings(sslyze_data: dict) -> list[Finding]:
         # ── Weak protocol versions ─────────────────────────────────────────
         for proto_key in ("ssl_2_0_cipher_suites", "ssl_3_0_cipher_suites",
                           "tls_1_0_cipher_suites", "tls_1_1_cipher_suites"):
-            proto_data = scan_result.get(proto_key, {})
+            proto_data = scan_result.get(proto_key) or {}
             if not proto_data:
                 continue
             accepted = (
-                proto_data.get("result", {})
-                .get("accepted_cipher_suites", [])
+                (proto_data.get("result") or {})
+                .get("accepted_cipher_suites") or []
             )
             if accepted:
                 proto_name = proto_key.replace("_cipher_suites", "").upper().replace("_", " ")
@@ -259,12 +259,12 @@ def _parse_sslyze_findings(sslyze_data: dict) -> list[Finding]:
 
         # ── Weak ciphers in TLS 1.2 ───────────────────────────────────────
         for proto_key in ("tls_1_2_cipher_suites", "tls_1_3_cipher_suites"):
-            proto_data = scan_result.get(proto_key, {})
+            proto_data = scan_result.get(proto_key) or {}
             if not proto_data:
                 continue
             accepted = (
-                proto_data.get("result", {})
-                .get("accepted_cipher_suites", [])
+                (proto_data.get("result") or {})
+                .get("accepted_cipher_suites") or []
             )
             for suite in accepted:
                 name = suite.get("cipher_suite", {}).get("name", "")
@@ -279,12 +279,12 @@ def _parse_sslyze_findings(sslyze_data: dict) -> list[Finding]:
                     ))
 
         # ── Certificate issues ─────────────────────────────────────────────
-        cert_info = scan_result.get("certificate_info", {}).get("result", {})
-        cert_deployments = cert_info.get("certificate_deployments", [])
+        cert_info = (scan_result.get("certificate_info") or {}).get("result") or {}
+        cert_deployments = cert_info.get("certificate_deployments") or []
 
         for deployment in cert_deployments:
             # Expired / not yet valid
-            verified = deployment.get("verified_certificate_chain", [])
+            verified = deployment.get("verified_certificate_chain") or []
             for cert in verified:
                 subject = cert.get("subject", {})
                 cn = subject.get("common_name") or subject.get("rfc4514_string", "")
@@ -322,7 +322,7 @@ def _parse_sslyze_findings(sslyze_data: dict) -> list[Finding]:
                 ))
 
         # ── Heartbleed ─────────────────────────────────────────────────────
-        heartbleed = scan_result.get("heartbleed", {}).get("result", {})
+        heartbleed = (scan_result.get("heartbleed") or {}).get("result") or {}
         if heartbleed.get("is_vulnerable_to_heartbleed"):
             findings.append(Finding(
                 type="cve",
@@ -334,7 +334,7 @@ def _parse_sslyze_findings(sslyze_data: dict) -> list[Finding]:
             ))
 
         # ── ROBOT attack ──────────────────────────────────────────────────
-        robot = scan_result.get("robot", {}).get("result", {})
+        robot = (scan_result.get("robot") or {}).get("result") or {}
         if robot.get("robot_result") in ("VULNERABLE_STRONG_ORACLE", "VULNERABLE_WEAK_ORACLE"):
             findings.append(Finding(
                 type="ssl",
@@ -345,7 +345,7 @@ def _parse_sslyze_findings(sslyze_data: dict) -> list[Finding]:
             ))
 
         # ── CCS injection ─────────────────────────────────────────────────
-        ccs = scan_result.get("openssl_ccs_injection", {}).get("result", {})
+        ccs = (scan_result.get("openssl_ccs_injection") or {}).get("result") or {}
         if ccs.get("is_vulnerable_to_ccs_injection"):
             findings.append(Finding(
                 type="ssl",

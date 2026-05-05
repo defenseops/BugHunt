@@ -71,6 +71,8 @@ services:
     # Handles non-scan tasks (report generation, etc.)
     command: celery -A app.worker worker --loglevel=info --queues=default,reports --concurrency=2
     env_file: .env
+    environment:
+      CELERY_WORKER: "true"
     volumes:
       - ./backend:/app
       - reports_data:/app/reports
@@ -95,6 +97,7 @@ services:
     command: celery -A app.worker worker --loglevel=info --queues=scans --concurrency=4 --pool=prefork
     env_file: .env
     environment:
+      CELERY_WORKER: "true"
       SCANNER_IMAGE: pentrascan-scanner:latest
       SCAN_NETWORK: pentra-scan-net
       MAX_PARALLEL_SCANS: "4"

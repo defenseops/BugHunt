@@ -41,8 +41,11 @@ export const scansApi = {
 
 // Reports
 export const reportsApi = {
-  generate: (scanId: string) => api.post(`/reports/${scanId}/generate`),
-  download: (scanId: string) => api.get(`/reports/${scanId}/download`, { responseType: 'blob' }),
+  generate: (scanId: string, lang: 'ru' | 'en' = 'ru') =>
+    api.post(`/reports/${scanId}/generate`, null, { params: { lang } }),
+  list: (scanId: string) => api.get(`/reports/${scanId}`),
+  download: (scanId: string, lang: 'ru' | 'en' = 'ru') =>
+    api.get(`/reports/${scanId}/download`, { params: { lang }, responseType: 'blob' }),
 }
 
 // Admin

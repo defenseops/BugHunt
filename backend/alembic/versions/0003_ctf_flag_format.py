@@ -7,8 +7,8 @@ Create Date: 2026-05-06
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0003_ctf_flag_format"
-down_revision = "0002_report_status"
+revision = "0003"
+down_revision = "0002"
 branch_labels = None
 depends_on = None
 

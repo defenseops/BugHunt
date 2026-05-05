@@ -646,8 +646,7 @@ def _tech_j_graphql(base: str, pattern: re.Pattern) -> list[Finding]:
                     fname = (field.get("name") or "").lower()
                     if fname in _FLAG_FIELD_NAMES:
                         # Query the field
-                        gql = f'{{"query":"{{{"query"} {{{fname}}}}}}"}}'
-                        _, fld_body, _ = _post(url, json_body={"query": f"{{ {fname} }}"}, timeout=8)
+                        _, fld_body, _ = _post(url, json_body={"query": "{ " + fname + " }"}, timeout=8)
                         flags = search_flags_decoded(fld_body, pattern)
                         for flag in flags:
                             findings.append(_flag_finding(flag, f"GraphQL field {fname!r}", url))

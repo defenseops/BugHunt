@@ -134,13 +134,24 @@ def search_flags_decoded(text: str, pattern: re.Pattern) -> list[str]:
     """
     Search for flags in text AND in decoded variants:
     base64, hex, rot13, url-decode.
+    ROT13 is only applied when no flags found in plain text (avoids SYNT{} noise).
     Returns deduplicated list.
     """
     found: list[str] = extract_flags(text, pattern)
 
-    for decoder in (_try_base64, _try_hex, _try_rot13, _try_urldecode):
+    # base64, hex, urldecode — always try
+    for decoder in (_try_base64, _try_hex, _try_urldecode):
         try:
             decoded = decoder(text)
+            if decoded:
+                found.extend(extract_flags(decoded, pattern))
+        except Exception:
+            pass
+
+    # ROT13 only if nothing found yet (prevents SYNT{} artifacts from FLAG{} text)
+    if not found:
+        try:
+            decoded = _try_rot13(text)
             if decoded:
                 found.extend(extract_flags(decoded, pattern))
         except Exception:

@@ -482,6 +482,12 @@ export default function ScanDetail() {
                 ctf_page_crawler: 'CTF: Full Page Crawl',
                 ctf_api_fuzz:     'CTF: API Version + Param Fuzz',
                 ctf_hunt:         'CTF: Flag Hunt',
+                ctf_blind_sqli:   'CTF: Blind SQLi Extraction',
+                ctf_blind_xxe:    'CTF: Blind XXE Error-Based',
+                ctf_rce_chain:    'CTF: RCE → Flag Auto-Chain',
+                ctf_source_grep:  'CTF: Source Code Grep',
+                ctf_captcha:      'CTF: Math Captcha Solve',
+                ctf_crypto:       'CTF: Crypto Solver',
               } as Record<string, string>)[scan.current_phase] ?? scan.current_phase.toUpperCase()}
             </p>
           )}

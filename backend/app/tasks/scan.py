@@ -494,9 +494,11 @@ async def _run_scan_async(scan_id: str) -> dict:
 async def _run_ctf_pipeline(ctx, scan, scan_id: str) -> dict:
     """
     Dedicated CTF pipeline.
-    Runs web-focused phases + ctf_hunter with all 25 techniques.
+    Runs web-focused phases + ctf_hunter (25 techniques) + advanced modules.
     """
     from app.scanner.ctf_hunter import run_ctf_hunter
+    from app.scanner.ctf_advanced import run_ctf_advanced
+    from app.scanner.crypto_solver import run_crypto_solver
     from app.scanner.dns import run_dns
     from app.scanner.nmap import run_nmap
     from app.scanner.nikto import run_nikto
@@ -564,10 +566,19 @@ async def _run_ctf_pipeline(ctx, scan, scan_id: str) -> dict:
         + xss_result.findings + lfi_result.findings + wv_result.findings
     )
 
-    # Phase 3: CTF Hunter — all 25 techniques
+    # Phase 3: CTF Hunter — 25 web attack techniques
     await ctx.set_phase("ctf_hunt")
     ctf_result = await run_ctf_hunter(ctx, target, scan.ctf_flag_format, all_findings)
     all_findings += ctf_result.findings
+
+    # Phase 3b: Advanced CTF — blind SQLi, blind XXE, RCE chain, source grep, math captcha
+    advanced_result = await run_ctf_advanced(ctx, target, scan.ctf_flag_format, all_findings)
+    all_findings += advanced_result.findings
+
+    # Phase 3c: Crypto solver — XOR, multi-base, Caesar, Vigenere, rail fence, hash crack
+    await ctx.set_phase("ctf_crypto")
+    crypto_result = await run_crypto_solver(ctx, scan.ctf_flag_format, all_findings)
+    all_findings += crypto_result.findings
 
     # Phase 4: Rule engine (simplified — dedup + CVSS)
     await ctx.set_phase("rule_engine")

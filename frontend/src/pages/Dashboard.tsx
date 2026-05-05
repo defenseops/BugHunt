@@ -16,6 +16,7 @@ import ScanDetail from '@/pages/ScanDetail'
 import DDoSPanel   from '@/pages/DDoSPanel'
 import BillingPage  from '@/pages/Billing'
 import AdminPanel   from '@/pages/AdminPanel'
+import CTFPage      from '@/pages/CTFPage'
 import { scansApi } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
@@ -331,6 +332,7 @@ export default function Dashboard() {
               <Route index                      element={<Overview />} />
               <Route path="scans"               element={<ScansPage />} />
               <Route path="scans/:scanId"        element={<ScanDetail />} />
+              <Route path="ctf"                 element={<CTFPage />} />
               <Route path="ddos"                element={<DDoSPanel />} />
               <Route path="reports"             element={<PlaceholderPage title="REPORTS" />} />
               <Route path="billing"             element={<BillingPage />} />

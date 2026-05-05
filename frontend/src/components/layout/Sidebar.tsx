@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   LayoutDashboard, Shield, FileText, CreditCard,
-  Settings, ChevronRight, Zap,
+  Settings, ChevronRight, Zap, Flag,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
@@ -10,9 +10,10 @@ import { useAuthStore } from '@/stores/authStore'
 const navItems = [
   { to: '/dashboard',          label: 'OVERVIEW',  icon: LayoutDashboard },
   { to: '/dashboard/scans',    label: 'SCANS',     icon: Shield },
+  { to: '/dashboard/ctf',      label: 'CTF MODE',  icon: Flag, ctf: true },
   { to: '/dashboard/reports',  label: 'REPORTS',   icon: FileText },
   { to: '/dashboard/billing',  label: 'BILLING',   icon: CreditCard },
-  { to: '/dashboard/ddos',     label: 'DDOS TEST',  icon: Zap },
+  { to: '/dashboard/ddos',     label: 'DDOS TEST', icon: Zap },
   { to: '/dashboard/settings', label: 'SETTINGS',  icon: Settings },
 ]
 
@@ -39,7 +40,7 @@ export function Sidebar() {
         <p className="px-3 pb-2 text-[10px] font-mono text-cyber-muted/50 uppercase tracking-[0.2em]">Navigation</p>
         {navItems.map((item, i) => (
           <motion.div key={item.to} variants={itemVariants} initial="hidden" animate="visible" custom={i}>
-            <SidebarLink {...item} />
+            <SidebarLink {...item} ctf={item.ctf} />
           </motion.div>
         ))}
 
@@ -72,9 +73,10 @@ interface SidebarLinkProps {
   label: string
   icon: React.FC<{ className?: string }>
   danger?: boolean
+  ctf?: boolean
 }
 
-function SidebarLink({ to, label, icon: Icon, danger }: SidebarLinkProps) {
+function SidebarLink({ to, label, icon: Icon, danger, ctf }: SidebarLinkProps) {
   return (
     <NavLink
       to={to}
@@ -85,7 +87,11 @@ function SidebarLink({ to, label, icon: Icon, danger }: SidebarLinkProps) {
           isActive
             ? danger
               ? 'bg-cyber-red/10 text-cyber-red border border-cyber-red/30'
+              : ctf
+              ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/40'
               : 'bg-cyber-green/10 text-cyber-green border border-cyber-green/30'
+            : ctf
+            ? 'text-yellow-500/70 hover:text-yellow-400 hover:bg-yellow-500/5'
             : 'text-cyber-muted hover:text-cyber-text hover:bg-cyber-secondary/50',
         )
       }
@@ -93,6 +99,7 @@ function SidebarLink({ to, label, icon: Icon, danger }: SidebarLinkProps) {
       <span className="flex items-center gap-2.5">
         <Icon className="w-3.5 h-3.5 shrink-0" />
         {label}
+        {ctf && <span className="text-[9px] text-yellow-500/60 ml-0.5">⚑</span>}
       </span>
       <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
     </NavLink>

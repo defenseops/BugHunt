@@ -14,6 +14,7 @@ import json
 from typing import TYPE_CHECKING
 
 from app.scanner.base import Finding, ScanResult, run_cmd
+from app.scanner.flag_extractor import build_flag_pattern, search_flags_decoded
 
 if TYPE_CHECKING:
     from app.scanner.context import ScanContext
@@ -189,8 +190,10 @@ async def run_lfi(
 ) -> ScanResult:
     result = ScanResult()
 
-    if scan_type not in ("web", "full"):
+    if scan_type not in ("web", "full", "ctf"):
         return result
+
+    ctf_pattern = build_flag_pattern(getattr(ctx.scan, "ctf_flag_format", None)) if scan_type == "ctf" else None
 
     injectable = _collect_injectable_urls(target, all_findings)
 
@@ -247,6 +250,19 @@ async def run_lfi(
                     f"  LFI CONFIRMED: {param}={payload[:60]}",
                     level="error", module="lfi",
                 )
+
+                # CTF: search for flag in the LFI response body
+                if ctf_pattern:
+                    _, lfi_body = _probe_url(test_url)
+                    for flag in search_flags_decoded(lfi_body, ctf_pattern):
+                        result.findings.append(Finding(
+                            type="flag",
+                            title=f"FLAG CAPTURED via LFI: {flag}",
+                            severity="critical",
+                            description=f"Flag found in LFI response.\nURL: {test_url}\nPayload: {payload}\nFlag: {flag}",
+                            evidence=f"flag={flag} url={test_url} payload={payload}",
+                            cvss_score=10.0,
+                        ))
 
                 result.findings.append(Finding(
                     type="lfi",

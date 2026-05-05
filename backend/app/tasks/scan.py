@@ -91,6 +91,10 @@ async def _run_scan_async(scan_id: str) -> dict:
             await ctx.set_status("running")
             await ctx.commit()
 
+            # ── CTF mode: dedicated pipeline ───────────────────────────────
+            if scan.scan_type == "ctf":
+                return await _run_ctf_pipeline(ctx, scan, scan_id)
+
             # ── Phase 0: DNS recon ─────────────────────────────────────────
             await ctx.set_phase("dns_recon")
             dns_result = await run_dns(ctx, scan.target, scan.scan_type)
@@ -485,3 +489,106 @@ async def _run_scan_async(scan_id: str) -> dict:
             except Exception:
                 pass
             raise
+
+
+async def _run_ctf_pipeline(ctx, scan, scan_id: str) -> dict:
+    """
+    Dedicated CTF pipeline.
+    Runs web-focused phases + ctf_hunter with all 25 techniques.
+    """
+    from app.scanner.ctf_hunter import run_ctf_hunter
+    from app.scanner.dns import run_dns
+    from app.scanner.nmap import run_nmap
+    from app.scanner.nikto import run_nikto
+    from app.scanner.ssl_headers import run_ssl_headers
+    from app.scanner.dirscan import run_dirscan
+    from app.scanner.sqlmap import run_sqlmap
+    from app.scanner.xss import run_xss
+    from app.scanner.lfi import run_lfi
+    from app.scanner.web_vulns import run_web_vulns
+    from app.scanner.rule_engine import run_rule_engine
+
+    target = scan.target
+
+    # Phase 0: DNS (lightweight)
+    await ctx.set_phase("dns_recon")
+    dns_result = await run_dns(ctx, target, "ctf")
+
+    # Phase 1: Nmap (web ports only)
+    await ctx.set_phase("recon")
+    nmap_result = await run_nmap(ctx, target, "ctf")
+
+    # Phase 2a: Nikto
+    await ctx.set_phase("web_scan")
+    nikto_result = await run_nikto(ctx, target, "ctf", nmap_result.findings)
+
+    # Phase 2b: SSL/headers
+    await ctx.set_phase("ssl_headers")
+    ssl_result = await run_ssl_headers(ctx, target, "ctf", nmap_result.findings)
+
+    # Phase 2c: Directory scan (CTF paths via ffuf)
+    await ctx.set_phase("dir_scan")
+    dir_result = await run_dirscan(ctx, target, "ctf", nmap_result.findings)
+
+    _web_pool = (
+        dns_result.findings
+        + nmap_result.findings
+        + nikto_result.findings
+        + ssl_result.findings
+        + dir_result.findings
+    )
+
+    # Phase 2d: SQLi
+    await ctx.set_phase("sqli_scan")
+    sqli_result = await run_sqlmap(ctx, target, "ctf", _web_pool)
+
+    # Phase 2e: XSS
+    await ctx.set_phase("xss_scan")
+    xss_result = await run_xss(ctx, target, "ctf", _web_pool + sqli_result.findings, nmap_result.findings)
+
+    # Phase 2f: LFI
+    await ctx.set_phase("lfi_scan")
+    lfi_result = await run_lfi(ctx, target, "ctf", _web_pool + sqli_result.findings + xss_result.findings)
+
+    # Phase 2g: Web vulns (SSTI, SSRF, XXE, CORS, JWT…)
+    await ctx.set_phase("web_vulns")
+    wv_result = await run_web_vulns(
+        ctx, target, "ctf",
+        _web_pool + sqli_result.findings + xss_result.findings + lfi_result.findings,
+        nmap_result.findings,
+    )
+
+    all_findings = (
+        dns_result.findings + nmap_result.findings + nikto_result.findings
+        + ssl_result.findings + dir_result.findings + sqli_result.findings
+        + xss_result.findings + lfi_result.findings + wv_result.findings
+    )
+
+    # Phase 3: CTF Hunter — all 25 techniques
+    await ctx.set_phase("ctf_hunt")
+    ctf_result = await run_ctf_hunter(ctx, target, scan.ctf_flag_format, all_findings)
+    all_findings += ctf_result.findings
+
+    # Phase 4: Rule engine (simplified — dedup + CVSS)
+    await ctx.set_phase("rule_engine")
+    engine_result = await run_rule_engine(ctx, all_findings)
+    await ctx.save_findings(engine_result.findings, replace=True)
+
+    flags_found = sum(1 for f in engine_result.findings if f.type == "flag")
+
+    await ctx.set_phase("done")
+    await ctx.set_status("completed")
+    await ctx.log(
+        f"CTF scan completed: {flags_found} flag(s) captured, "
+        f"{engine_result.stats['unique_findings']} total findings",
+        level="success",
+    )
+    await ctx.commit()
+
+    return {
+        "scan_id": scan_id,
+        "status": "completed",
+        "mode": "ctf",
+        "flags_found": flags_found,
+        "findings": engine_result.stats["unique_findings"],
+    }

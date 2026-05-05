@@ -70,6 +70,7 @@ def _enrich(scan: Scan) -> ScanOut:
         finished_at=scan.finished_at,
         created_at=scan.created_at,
         findings_count=len(scan.findings) if scan.findings else 0,
+        ctf_flag_format=scan.ctf_flag_format,
     )
 
 
@@ -149,6 +150,7 @@ async def create_scan(
         scan_type=body.scan_type,
         mode="auto",
         status="pending",
+        ctf_flag_format=body.ctf_flag_format,
     )
     db.add(scan)
     await db.commit()

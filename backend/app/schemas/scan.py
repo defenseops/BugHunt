@@ -33,15 +33,19 @@ def _validate_target(v: str) -> str:
 
 # ── requests ───────────────────────────────────────────────────────────────
 
-ScanTypeT = Literal["full", "port", "vuln", "web"]
+ScanTypeT = Literal["full", "port", "vuln", "web", "ctf"]
 
 class CreateScanRequest(BaseModel):
     target: str = Field(min_length=1, max_length=500)
     scan_type: ScanTypeT = "full"
+    ctf_flag_format: str | None = Field(None, max_length=200)
 
     @field_validator("target")
     @classmethod
     def validate_target(cls, v: str) -> str:
+        # CTF targets can be full URLs like http://challenge:8080
+        if v.strip().startswith(("http://", "https://")):
+            return v.strip()
         return _validate_target(v)
 
 
@@ -79,6 +83,7 @@ class ScanOut(BaseModel):
     finished_at: datetime | None
     created_at: datetime
     findings_count: int = 0
+    ctf_flag_format: str | None = None
 
     model_config = {"from_attributes": True}
 

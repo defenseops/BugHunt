@@ -10,6 +10,7 @@ import re
 from typing import TYPE_CHECKING
 
 from app.scanner.base import Finding, ScanResult, run_cmd
+from app.scanner.flag_extractor import build_flag_pattern, search_flags_decoded
 
 if TYPE_CHECKING:
     from app.scanner.context import ScanContext
@@ -212,8 +213,10 @@ async def run_xss(
 ) -> ScanResult:
     result = ScanResult()
 
-    if scan_type not in ("web", "full"):
+    if scan_type not in ("web", "full", "ctf"):
         return result
+
+    ctf_pattern = build_flag_pattern(getattr(ctx.scan, "ctf_flag_format", None)) if scan_type == "ctf" else None
 
     await ctx.log("XSS: starting dalfox scan", module="xss")
 
@@ -238,6 +241,17 @@ async def run_xss(
             if hits:
                 total_found += len(hits)
                 result.findings.extend(hits)
+                # CTF: check XSS output for flag patterns
+                if ctf_pattern:
+                    for flag in search_flags_decoded(stdout, ctf_pattern):
+                        result.findings.append(Finding(
+                            type="flag",
+                            title=f"FLAG CAPTURED via XSS: {flag}",
+                            severity="critical",
+                            description=f"Flag found in XSS probe output.\nURL: {url}\nFlag: {flag}",
+                            evidence=f"flag={flag} url={url}",
+                            cvss_score=10.0,
+                        ))
                 await ctx.log(
                     f"XSS FOUND: {url[:80]} — {len(hits)} point(s)",
                     level="error",

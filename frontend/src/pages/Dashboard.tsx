@@ -159,10 +159,15 @@ function ScanRow({ scan }: { scan: Scan }) {
       onClick={() => navigate(`/dashboard/scans/${scan.id}`)}
     >
       <div className="flex items-center gap-3 min-w-0">
-        <Shield className="w-4 h-4 text-cyber-muted shrink-0" />
+        {scan.scan_type === 'ctf'
+          ? <span className="text-yellow-400 shrink-0 text-sm">⚑</span>
+          : <Shield className="w-4 h-4 text-cyber-muted shrink-0" />
+        }
         <div className="min-w-0">
           <p className="text-sm font-mono text-cyber-text truncate">{scan.target}</p>
-          <p className="text-[10px] font-mono text-cyber-muted uppercase">{scan.scan_type}</p>
+          <p className={`text-[10px] font-mono uppercase ${scan.scan_type === 'ctf' ? 'text-yellow-500' : 'text-cyber-muted'}`}>
+            {scan.scan_type === 'ctf' ? '⚑ CTF MODE' : scan.scan_type}
+          </p>
         </div>
       </div>
       <div className="flex items-center gap-4 shrink-0">
@@ -180,6 +185,7 @@ function ScanRow({ scan }: { scan: Scan }) {
 function ScansPage() {
   const [target, setTarget] = useState('')
   const [scanType, setScanType] = useState('full')
+  const [ctfFlagFormat, setCtfFlagFormat] = useState('')
   const [launching, setLaunching] = useState(false)
 
   const { data, isLoading, refetch } = useQuery({
@@ -188,13 +194,20 @@ function ScansPage() {
   })
   const scans: Scan[] = data?.data?.items ?? []
 
+  const isCTF = scanType === 'ctf'
+
   async function handleLaunch(e: React.FormEvent) {
     e.preventDefault()
     if (!target.trim()) return
     setLaunching(true)
     try {
-      await scansApi.create({ target: target.trim(), scan_type: scanType })
+      await scansApi.create({
+        target: target.trim(),
+        scan_type: scanType,
+        ...(isCTF && ctfFlagFormat.trim() ? { ctf_flag_format: ctfFlagFormat.trim() } : {}),
+      })
       setTarget('')
+      setCtfFlagFormat('')
       refetch()
     } catch { /* handled via global interceptor */ }
     finally { setLaunching(false) }
@@ -206,32 +219,61 @@ function ScansPage() {
 
       {/* New scan form */}
       <motion.div
-        className="cyber-card p-5 border border-cyber-border rounded-lg"
+        className={`cyber-card p-5 border rounded-lg ${isCTF ? 'border-yellow-500/60' : 'border-cyber-border'}`}
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <p className="text-xs font-mono text-cyber-muted tracking-widest mb-4">// NEW SCAN</p>
-        <form onSubmit={handleLaunch} className="flex flex-col sm:flex-row gap-3">
-          <Input
-            placeholder="target IP or domain (e.g. 192.168.1.1)"
-            value={target}
-            onChange={(e) => setTarget(e.target.value)}
-            className="flex-1"
-          />
-          <select
-            value={scanType}
-            onChange={(e) => setScanType(e.target.value)}
-            className="h-10 rounded-md border border-cyber-border bg-cyber-primary px-3 font-mono text-sm text-cyber-text focus:outline-none focus:border-cyber-green cursor-pointer"
-          >
-            <option value="full">Full Scan</option>
-            <option value="port">Port Only</option>
-            <option value="vuln">Vulnerability</option>
-            <option value="web">Web App</option>
-          </select>
-          <Button type="submit" loading={launching} className="shrink-0">
-            <Plus className="w-3.5 h-3.5" />
-            LAUNCH
-          </Button>
+        <p className="text-xs font-mono text-cyber-muted tracking-widest mb-4">
+          {isCTF ? '// CTF FLAG HUNTER' : '// NEW SCAN'}
+        </p>
+        <form onSubmit={handleLaunch} className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Input
+              placeholder={isCTF ? 'target: IP, domain, or http://host:port' : 'target IP or domain (e.g. 192.168.1.1)'}
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              className="flex-1"
+            />
+            <select
+              value={scanType}
+              onChange={(e) => setScanType(e.target.value)}
+              className={`h-10 rounded-md border bg-cyber-primary px-3 font-mono text-sm focus:outline-none cursor-pointer
+                ${isCTF
+                  ? 'border-yellow-500/70 text-yellow-400 focus:border-yellow-400'
+                  : 'border-cyber-border text-cyber-text focus:border-cyber-green'
+                }`}
+            >
+              <option value="full">Full Scan</option>
+              <option value="port">Port Only</option>
+              <option value="vuln">Vulnerability</option>
+              <option value="web">Web App</option>
+              <option value="ctf">⚑ CTF Mode</option>
+            </select>
+            <Button
+              type="submit"
+              loading={launching}
+              className={`shrink-0 ${isCTF ? 'bg-yellow-500 text-black hover:bg-yellow-400 border-yellow-500' : ''}`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {isCTF ? 'HUNT FLAGS' : 'LAUNCH'}
+            </Button>
+          </div>
+          {isCTF && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex flex-col sm:flex-row gap-2 items-start sm:items-center"
+            >
+              <span className="text-xs font-mono text-yellow-500/80 whitespace-nowrap pt-2.5">Flag format:</span>
+              <Input
+                placeholder='e.g. aues{...} or FLAG{...} (leave empty for auto-detect)'
+                value={ctfFlagFormat}
+                onChange={(e) => setCtfFlagFormat(e.target.value)}
+                className="flex-1 border-yellow-500/40 focus:border-yellow-400 text-yellow-300 placeholder:text-yellow-500/30"
+              />
+            </motion.div>
+          )}
         </form>
       </motion.div>
 

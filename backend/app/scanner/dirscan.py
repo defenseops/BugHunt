@@ -10,6 +10,7 @@ import re
 from typing import TYPE_CHECKING
 
 from app.scanner.base import Finding, ScanResult, run_cmd
+from app.scanner.flag_extractor import build_flag_pattern, search_flags_decoded
 
 if TYPE_CHECKING:
     from app.scanner.context import ScanContext
@@ -388,6 +389,29 @@ async def run_dirscan(
                     level="success" if go_findings else "info",
                     module="gobuster",
                 )
+
+    # CTF: probe each found URL for flags
+    if scan_type == "ctf":
+        ctf_pattern = build_flag_pattern(getattr(ctx.scan, "ctf_flag_format", None))
+        import httpx as _httpx
+        for f in list(result.findings):
+            url = f.evidence or ""
+            if not url.startswith("http"):
+                continue
+            try:
+                with _httpx.Client(timeout=6, follow_redirects=True, verify=False) as c:
+                    r = c.get(url)
+                    for flag in search_flags_decoded(r.text, ctf_pattern):
+                        result.findings.append(Finding(
+                            type="flag",
+                            title=f"FLAG CAPTURED via dir scan: {flag}",
+                            severity="critical",
+                            description=f"Flag found at {url}\nFlag: {flag}",
+                            evidence=f"flag={flag} url={url}",
+                            cvss_score=10.0,
+                        ))
+            except Exception:
+                pass
 
     sensitive_count = sum(1 for f in result.findings if f.severity in ("medium", "high", "critical"))
     await ctx.log(

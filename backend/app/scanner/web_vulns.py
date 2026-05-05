@@ -14,6 +14,7 @@ import os
 from typing import TYPE_CHECKING
 
 from app.scanner.base import Finding, ScanResult, run_cmd
+from app.scanner.flag_extractor import build_flag_pattern, search_flags_decoded
 
 if TYPE_CHECKING:
     from app.scanner.context import ScanContext
@@ -446,8 +447,10 @@ async def run_web_vulns(
 ) -> ScanResult:
     result = ScanResult()
 
-    if scan_type not in ("web", "full"):
+    if scan_type not in ("web", "full", "ctf"):
         return result
+
+    ctf_pattern = build_flag_pattern(getattr(ctx.scan, "ctf_flag_format", None)) if scan_type == "ctf" else None
 
     param_urls = _collect_param_urls(all_findings)
     base_urls_list = _base_urls(target, nmap_findings)
@@ -492,6 +495,19 @@ async def run_web_vulns(
             result.findings.extend(_run_jwt_tool(token, base_urls_list[0] if base_urls_list else target))
     else:
         await ctx.log("  JWT: no tokens found in scan evidence", level="info", module="web_vulns")
+
+    # CTF: search for flags in all tool output evidence
+    if ctf_pattern:
+        all_evidence = " ".join((f.evidence or "") + " " + (f.description or "") for f in result.findings)
+        for flag in search_flags_decoded(all_evidence, ctf_pattern):
+            result.findings.append(Finding(
+                type="flag",
+                title=f"FLAG CAPTURED via web vuln: {flag}",
+                severity="critical",
+                description=f"Flag found in web vulnerability probe output.\nFlag: {flag}",
+                evidence=f"flag={flag}",
+                cvss_score=10.0,
+            ))
 
     sev_counts = {"critical": 0, "high": 0, "medium": 0}
     for f in result.findings:

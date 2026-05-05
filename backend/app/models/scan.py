@@ -25,6 +25,7 @@ class Scan(Base):
     )
     # pending | running | recon_complete | analyzing | exploiting | done | failed
     current_phase: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    ctf_flag_format: Mapped[str | None] = mapped_column(String(200), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

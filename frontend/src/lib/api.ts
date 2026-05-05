@@ -35,7 +35,7 @@ export const authApi = {
 export const scansApi = {
   list:   (params?: { page?: number; limit?: number }) => api.get('/scans', { params }),
   get:    (id: string) => api.get(`/scans/${id}`),
-  create: (data: { target: string; scan_type: string; options?: Record<string, unknown> }) => api.post('/scans', data),
+  create: (data: { target: string; scan_type: string; ctf_flag_format?: string; options?: Record<string, unknown> }) => api.post('/scans', data),
   delete: (id: string) => api.delete(`/scans/${id}`),
 }
 

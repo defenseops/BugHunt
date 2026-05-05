@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
@@ -46,6 +46,7 @@ interface ScanDetail {
   created_at: string
   findings_count: number
   findings: Finding[]
+  ctf_flag_format?: string | null
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -304,7 +305,7 @@ function EmptyTab({ icon, label }: { icon: React.ReactNode; label: string }) {
 
 // ── Tabs definition ────────────────────────────────────────────────────────
 
-type TabId = 'overview' | 'vulns' | 'ports' | 'osint' | 'paths' | 'log'
+type TabId = 'flags' | 'overview' | 'vulns' | 'ports' | 'osint' | 'paths' | 'log'
 
 // ── Main component ─────────────────────────────────────────────────────────
 
@@ -342,13 +343,26 @@ export default function ScanDetail() {
   }, {})
 
   // Tab buckets
-  const vulnFindings  = allFindings.filter((f) => ['cve', 'exploit', 'vuln', 'web', 'endpoint', 'ssl', 'header'].includes(f.type))
+  const flagFindings  = allFindings.filter((f) => f.type === 'flag')
+  const vulnFindings  = allFindings.filter((f) => ['cve', 'exploit', 'vuln', 'web', 'endpoint', 'ssl', 'header',
+    'lfi', 'sqli', 'xss', 'ssti', 'ssrf', 'xxe', 'nosql_injection', 'source_leak', 'secret_leak',
+    'debug_exposure', 'path_bypass', 'path_traversal', 'type_juggling', 'nosql_injection'].includes(f.type))
   const portFindings  = allFindings.filter((f) => f.type === 'port' || f.type === 'service')
   const osintFindings = allFindings.filter((f) => f.type === 'osint')
   const pathFindings  = allFindings.filter((f) => f.type === 'attack_path' || f.type === 'msf_mapping')
   const topCritical   = allFindings.filter((f) => f.severity === 'critical' || f.severity === 'high').slice(0, 5)
 
+  const isCTF = scan?.scan_type === 'ctf' || flagFindings.length > 0
+
+  // Auto-switch to FLAGS tab when CTF scan completes with flags
+  useEffect(() => {
+    if (isCTF && flagFindings.length > 0 && scan?.status === 'completed') {
+      setActiveTab('flags')
+    }
+  }, [isCTF, flagFindings.length, scan?.status])
+
   const tabs: { id: TabId; label: string; count?: number; icon: React.ReactNode }[] = [
+    ...(isCTF ? [{ id: 'flags' as TabId, label: '⚑ FLAGS', count: flagFindings.length, icon: <span className="text-yellow-400">⚑</span> }] : []),
     { id: 'overview', label: 'Overview',     icon: <Shield className="w-3 h-3" /> },
     { id: 'vulns',    label: 'Vulns',        count: vulnFindings.length,  icon: <AlertTriangle className="w-3 h-3" /> },
     { id: 'ports',    label: 'Ports',        count: portFindings.length,  icon: <Network className="w-3 h-3" /> },
@@ -441,7 +455,34 @@ export default function ScanDetail() {
           </div>
           {scan.current_phase && isActive && (
             <p className="text-xs font-mono text-cyber-green mt-1 animate-pulse">
-              Phase: {scan.current_phase.toUpperCase()}
+              Phase: {({
+                ctf_paths:        'CTF: Common Path Probe',
+                ctf_git_recon:    'CTF: .git Reconstruction',
+                ctf_jwt_attack:   'CTF: JWT Attack',
+                ctf_idor_enum:    'CTF: IDOR Enumeration',
+                ctf_ssti_probe:   'CTF: SSTI Probe',
+                ctf_xxe_probe:    'CTF: XXE Injection',
+                ctf_ssrf_probe:   'CTF: SSRF Probe',
+                ctf_cmdi_probe:   'CTF: Command Injection',
+                ctf_nosql_injection: 'CTF: NoSQL Injection',
+                ctf_graphql_probe: 'CTF: GraphQL Introspection',
+                ctf_file_upload:  'CTF: File Upload RCE',
+                ctf_mass_assign:  'CTF: Mass Assignment',
+                ctf_path_bypass:  'CTF: Path Normalization Bypass',
+                ctf_server_misconfig: 'CTF: Server Misconfig',
+                ctf_debug_expose: 'CTF: Debug Console',
+                ctf_type_juggling: 'CTF: PHP Type Juggling',
+                ctf_cookie_manip: 'CTF: Cookie / Header Manipulation',
+                ctf_error_pages:  'CTF: Error Pages / Stack Trace',
+                ctf_websocket:    'CTF: WebSocket Probe',
+                ctf_race:         'CTF: Race Condition',
+                ctf_mass_assign2: 'CTF: Prototype Pollution',
+                ctf_jsonp_hijack: 'CTF: JSONP Hijacking',
+                ctf_js_analysis:  'CTF: JS Source Analysis',
+                ctf_page_crawler: 'CTF: Full Page Crawl',
+                ctf_api_fuzz:     'CTF: API Version + Param Fuzz',
+                ctf_hunt:         'CTF: Flag Hunt',
+              } as Record<string, string>)[scan.current_phase] ?? scan.current_phase.toUpperCase()}
             </p>
           )}
         </div>
@@ -506,7 +547,11 @@ export default function ScanDetail() {
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   'flex items-center gap-1.5 px-4 py-3 text-xs font-mono whitespace-nowrap transition-colors cursor-pointer border-b-2',
-                  activeTab === tab.id
+                  tab.id === 'flags' && activeTab === 'flags'
+                    ? 'border-yellow-400 text-yellow-400'
+                    : tab.id === 'flags'
+                    ? 'border-transparent text-yellow-500/60 hover:text-yellow-400'
+                    : activeTab === tab.id
                     ? 'border-cyber-green text-cyber-green'
                     : 'border-transparent text-cyber-muted hover:text-cyber-text',
                 )}
@@ -622,6 +667,48 @@ export default function ScanDetail() {
                 ? <div className="divide-y divide-cyber-border">{filteredVulns.map((f) => <FindingRow key={f.id} f={f} />)}</div>
                 : <EmptyTab icon={<AlertTriangle className="w-6 h-6" />} label="No vulnerability findings" />
               }
+            </div>
+          )}
+
+          {/* Tab: FLAGS (CTF mode) */}
+          {activeTab === 'flags' && (
+            <div className="p-4 space-y-3">
+              {flagFindings.length > 0 ? (
+                flagFindings.map((f) => (
+                  <motion.div
+                    key={f.id}
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="rounded-lg border border-yellow-500/50 bg-yellow-500/5 p-5"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-yellow-400 text-lg">⚑</span>
+                      <span className="text-xs font-mono text-yellow-500 uppercase tracking-widest">Flag Captured</span>
+                    </div>
+                    <p className="font-mono text-yellow-300 text-base break-all mb-3">
+                      {f.title.replace('FLAG CAPTURED: ', '').replace('FLAG CAPTURED via ', '').split(': ').pop() ?? f.title}
+                    </p>
+                    <p className="font-mono text-xs text-yellow-500/60 mb-3">{f.description}</p>
+                    <button
+                      className="text-xs font-mono px-3 py-1.5 rounded border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 transition-colors"
+                      onClick={() => {
+                        const flag = f.title.replace('FLAG CAPTURED: ', '').replace('FLAG CAPTURED via ', '').split(': ').pop() ?? f.title
+                        navigator.clipboard.writeText(flag)
+                      }}
+                    >
+                      Copy Flag
+                    </button>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="p-12 text-center">
+                  <span className="text-4xl block mb-3 text-yellow-500/30">⚑</span>
+                  <p className="font-mono text-sm text-cyber-muted">No flags captured yet</p>
+                  <p className="font-mono text-xs text-cyber-muted/50 mt-1">
+                    {scan?.status === 'running' ? 'Scan in progress...' : 'Check Vulns tab for attack vectors'}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

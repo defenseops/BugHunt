@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, RefreshCw, ChevronRight, Flag, Copy, Check } from 'lucide-react'
@@ -134,7 +133,6 @@ function CTFScanRow({ scan }: { scan: Scan }) {
 // ── Main page ──────────────────────────────────────────────────────────────
 
 export default function CTFPage() {
-  const navigate = useNavigate()
   const [target, setTarget] = useState('')
   const [flagFormat, setFlagFormat] = useState('')
   const [launching, setLaunching] = useState(false)

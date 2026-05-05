@@ -212,6 +212,32 @@ a  { color: #2563eb; }
 
 /* ── Page break helpers ── */
 .pb { page-break-before: always; }
+
+/* ── CTF Styles ── */
+.ctf-header {
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a00 100%);
+  border: 2pt solid #eab308;
+  border-radius: 4pt;
+  padding: 12pt 16pt;
+  margin-bottom: 12pt;
+  color: #fef08a;
+}
+.ctf-header-title { font-size: 16pt; font-weight: bold; letter-spacing: 3pt; color: #fde047; margin-bottom: 4pt; }
+.ctf-header-sub { font-size: 9pt; color: #a3a300; letter-spacing: 1pt; }
+.flag-card { background: #0a1a00; border: 1.5pt solid #4ade80; border-radius: 4pt; margin-bottom: 10pt; page-break-inside: avoid; }
+.flag-card-header { background: #052e0a; padding: 8pt 12pt; border-bottom: 1pt solid #4ade80; }
+.flag-icon { font-size: 14pt; }
+.flag-label { font-size: 7.5pt; color: #4ade80; text-transform: uppercase; letter-spacing: 1.5pt; font-weight: bold; }
+.flag-value { font-family: 'Courier New', monospace; font-size: 12pt; color: #86efac; font-weight: bold; padding: 10pt 12pt; word-break: break-all; letter-spacing: 0.5pt; }
+.flag-meta { padding: 4pt 12pt 8pt; font-size: 8pt; color: #4a7c59; }
+.llm-section { background: #0f0a1a; border: 1.5pt solid #7c3aed; border-radius: 4pt; margin-bottom: 14pt; page-break-inside: avoid; }
+.llm-section-header { background: #1a0a2e; padding: 8pt 12pt; border-bottom: 1pt solid #7c3aed; }
+.llm-section-title { font-size: 10pt; font-weight: bold; color: #c4b5fd; }
+.llm-why { font-size: 8pt; color: #7c3aed; font-style: italic; margin-top: 2pt; }
+.llm-vuln-type { display: inline-block; background: #4c1d95; color: #ddd6fe; font-size: 7.5pt; padding: 2pt 6pt; border-radius: 3pt; font-family: monospace; margin-top: 4pt; }
+.prompt-box { background: #020617; border: 1pt solid #312e81; border-radius: 3pt; margin: 8pt 12pt 12pt; padding: 10pt; font-family: 'Courier New', monospace; font-size: 8pt; color: #a5b4fc; white-space: pre-wrap; word-break: break-word; line-height: 1.6; }
+.prompt-label { font-size: 7.5pt; color: #6366f1; text-transform: uppercase; letter-spacing: 1pt; font-weight: bold; margin: 8pt 12pt 4pt; font-family: Arial, sans-serif; }
+.ai-tip { background: #1e1b4b; border-left: 3pt solid #6366f1; padding: 6pt 10pt; margin: 8pt 12pt 0; font-size: 8.5pt; color: #c7d2fe; }
 </style>
 </head>
 <body>
@@ -234,9 +260,79 @@ a  { color: #2563eb; }
 </div>
 </div>
 
+{# ══════════════════════════════════════════ CTF HEADER ══════════════════════════════════════ #}
+{% if is_ctf %}
+<div class="section">
+  <div class="ctf-header">
+    <div class="ctf-header-title">⚑ CTF FLAG HUNTER — ОТЧЁТ</div>
+    <div class="ctf-header-sub">
+      ЦЕЛЬ: {{ target }} &nbsp;|&nbsp;
+      ФОРМАТ ФЛАГА: {{ ctf_flag_format or 'АВТО-ОПРЕДЕЛЕНИЕ' }} &nbsp;|&nbsp;
+      ФЛАГОВ ЗАХВАЧЕНО: {{ flag_findings|length }} &nbsp;|&nbsp;
+      {{ started_at }}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ══════════════════════════════════════════ НАЙДЕННЫЕ ФЛАГИ ═════════════════════════════════ #}
+{% if flag_findings %}
+<div class="section">
+<h2>{% if is_ctf %}1.{% else %}—.{% endif %} Захваченные флаги</h2>
+<p>Следующие флаги были автоматически получены в ходе сканирования.</p>
+
+{% for f in flag_findings %}
+<div class="flag-card">
+  <div class="flag-card-header">
+    <span class="flag-icon">⚑</span>&nbsp;
+    <span class="flag-label">Флаг #{{ loop.index }} — {{ f.title | replace('FLAG CAPTURED: ', '') | replace('FLAG CAPTURED via ', '') | truncate(60) }}</span>
+  </div>
+  <div class="flag-value">
+    {% set raw_flag = f.title | replace('FLAG CAPTURED: ', '') %}
+    {% if '{' in raw_flag %}{{ raw_flag }}{% else %}{{ f.description | truncate(200) }}{% endif %}
+  </div>
+  <div class="flag-meta">
+    Техника: {{ (f.evidence or '').split('technique=')[1].split(' ')[0] if 'technique=' in (f.evidence or '') else 'автоматическая' }}
+    &nbsp;|&nbsp; CVSS: {{ f.cvss_score or '10.0' }}
+  </div>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+{# ══════════════════════════════════════════ ТРЕБУЕТ АНАЛИЗА С AI ════════════════════════════ #}
+{% if llm_prompts %}
+<div class="section pb">
+<h2>Требует анализа с ИИ-ассистентом</h2>
+<p>
+  Следующие уязвимости обнаружены, но не могут быть полностью проэксплуатированы автоматически.
+  Они требуют ручного анализа совместно с ИИ-ассистентом (Claude, GPT-4o и др.).
+  Каждый раздел содержит готовый промпт — вставьте его в Claude Code или Claude.ai
+  чтобы продолжить эксплуатацию совместно с ИИ.
+</p>
+
+{% for item in llm_prompts %}
+<div class="llm-section">
+  <div class="llm-section-header">
+    <div class="llm-section-title">{{ loop.index }}. {{ item.vuln_title | truncate(80) }}</div>
+    <div class="llm-vuln-type">{{ item.vuln_type }}</div>
+    <div class="llm-why">⚠ Почему нужен ИИ: {{ item.why_llm }}</div>
+  </div>
+  <div class="ai-tip">
+    💡 <strong>Как использовать:</strong> Скопируйте промпт ниже и вставьте его в Claude Code
+    (claude.ai/code) или в чат Claude. ИИ-ассистент проведёт вас через эксплуатацию
+    этой уязвимости шаг за шагом.
+  </div>
+  <div class="prompt-label">Промпт для Claude / ИИ-ассистента:</div>
+  <div class="prompt-box">{{ item.prompt }}</div>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
 {# ══════════════════════════════════════════ EXECUTIVE SUMMARY ════════════════════════════════ #}
 <div class="section">
-<h2>1. Краткое резюме</h2>
+<h2>{% if is_ctf and flag_findings %}{{ (llm_prompts|length) + 2 }}{% elif is_ctf %}2{% else %}1{% endif %}. Краткое резюме</h2>
 <p>
   В рамках автоматизированного тестирования на проникновение проведён анализ цели
   <strong>{{ target }}</strong>. Сканирование выполнено {{ started_at }} и завершено

@@ -5,6 +5,7 @@ Parses XML output → Finding list.
 """
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,12 @@ from app.scanner.base import Finding, ScanResult, run_cmd
 
 if TYPE_CHECKING:
     from app.scanner.context import ScanContext
+
+
+def _strip_url_scheme(target: str) -> str:
+    """Extract bare host[:port] from a URL, or return target unchanged."""
+    target = re.sub(r"^https?://", "", target)
+    return target.split("/")[0]
 
 # CVE severity heuristics by CVSS (when nmap script reports score)
 _CVSS_SEVERITY = [
@@ -209,9 +216,12 @@ def _extract_script_finding(
 async def run_nmap(ctx: "ScanContext", target: str, scan_type: str) -> ScanResult:
     """
     Entry point called by the Celery task.
-    scan_type: full | port | vuln | web
+    scan_type: full | port | vuln | web | ctf
     """
     result = ScanResult()
+
+    # nmap expects a bare host, not a URL
+    nmap_target = _strip_url_scheme(target)
 
     # Build nmap command based on scan type
     base_flags = ["-sV", "--version-intensity", "5", "-T4", "--open"]
@@ -223,16 +233,16 @@ async def run_nmap(ctx: "ScanContext", target: str, scan_type: str) -> ScanResul
     elif scan_type == "vuln":
         flags = base_flags + ["--script", "vuln,exploit", "-p-"]
         os_flags = ["-O"]
-    elif scan_type == "web":
+    elif scan_type in ("web", "ctf"):
         flags = base_flags + [
             "--script", "http-enum,http-headers,http-methods,http-title,http-auth-finder",
-            "-p", "80,443,8080,8443,8000,8888,3000,5000",
+            "-p", "80,443,8080,8443,8000,8888,3000,5000,1337,4000,9000",
         ]
     else:  # full
         flags = base_flags + ["--script", "default,vuln", "-p-"]
         os_flags = ["-O"]
 
-    cmd = ["nmap"] + flags + os_flags + ["-oX", "-", target]
+    cmd = ["nmap"] + flags + os_flags + ["-oX", "-", nmap_target]
 
     await ctx.log(f"Running: {' '.join(cmd)}", module="nmap")
 

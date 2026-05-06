@@ -512,25 +512,30 @@ async def _run_ctf_pipeline(ctx, scan, scan_id: str) -> dict:
 
     target = scan.target
 
+    # For URL-based CTF targets (http://host:port), extract bare host for
+    # network tools (nmap, nikto, ssl) that construct their own URLs.
+    import re as _re
+    _bare_host = _re.sub(r"^https?://", "", target).split("/")[0]
+
     # Phase 0: DNS (lightweight)
     await ctx.set_phase("dns_recon")
-    dns_result = await run_dns(ctx, target, "ctf")
+    dns_result = await run_dns(ctx, _bare_host, "ctf")
 
     # Phase 1: Nmap (web ports only)
     await ctx.set_phase("recon")
-    nmap_result = await run_nmap(ctx, target, "ctf")
+    nmap_result = await run_nmap(ctx, _bare_host, "ctf")
 
     # Phase 2a: Nikto
     await ctx.set_phase("web_scan")
-    nikto_result = await run_nikto(ctx, target, "ctf", nmap_result.findings)
+    nikto_result = await run_nikto(ctx, _bare_host, "ctf", nmap_result.findings)
 
     # Phase 2b: SSL/headers
     await ctx.set_phase("ssl_headers")
-    ssl_result = await run_ssl_headers(ctx, target, "ctf", nmap_result.findings)
+    ssl_result = await run_ssl_headers(ctx, _bare_host, "ctf", nmap_result.findings)
 
     # Phase 2c: Directory scan (CTF paths via ffuf)
     await ctx.set_phase("dir_scan")
-    dir_result = await run_dirscan(ctx, target, "ctf", nmap_result.findings)
+    dir_result = await run_dirscan(ctx, _bare_host, "ctf", nmap_result.findings)
 
     _web_pool = (
         dns_result.findings

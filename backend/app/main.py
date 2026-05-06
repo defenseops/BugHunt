@@ -19,9 +19,24 @@ from app.core.redis import close_redis, get_redis
 logger = structlog.get_logger()
 
 
+def _run_migrations() -> None:
+    """Apply pending Alembic migrations on startup."""
+    try:
+        from alembic.config import Config
+        from alembic import command
+        import os
+        alembic_ini = os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
+        cfg = Config(alembic_ini)
+        command.upgrade(cfg, "head")
+        logger.info("alembic migrations applied")
+    except Exception as exc:
+        logger.warning("alembic migration failed", error=str(exc))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("starting up", env=settings.APP_ENV)
+    _run_migrations()
     await get_redis()
     yield
     logger.info("shutting down")
